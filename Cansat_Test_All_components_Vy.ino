@@ -1,22 +1,52 @@
-// The GY91 reads the data from the GY91 module
 #include <GY91.h>
 #include <Cansat_RFM96.h>
+#include <math.h>
+#include <SoftwareSerial.h>
+#include <HardwareSerial.h>
 #include "pitches.h"
+#include "Wire.h"
+#include "Adafruit_LTR390.h"
+
 #define USE_SD 0
+#define TCAADDR 0x70
+
+
+#define GPS_SERIAL Serial1
+#define GPS_BAUDRATE 9600
 
 Cansat_RFM96 rfm96(433500, USE_SD);
-bool awaitingConfirmation = false;
+Adafruit_LTR390 ltr = Adafruit_LTR390();
+
 unsigned long time_counter = 0;
 
+// Ozone pins
+const int Vgas = A17;
+const int Vref = A16;
+const int Vtemp = A15;
+const int ref = A14; // debuging
 
-int output_temp = 1;
+// Measuring offset can be aquired by running sensor in a clean enviroment, and letting
+// the value stabilize
+float Voffset = 0.0;  // 0 is a reasonable approximation
+
+// Sensor calibration factor
+// sensitivity code (nA/ppm) * TIA gain (ozone = 499 kV/A) * 10**-9 (A/nA) * 10**3 (V/kV)
+// scan the sensor for the code
+
+const double M = -56.83 * 499 * pow(10, -9) * pow(10, 3) ;// in (V / ppm)
+
+// default output from sensors, on/off
+int output_temp = 0;
 int output_vin = 0;
 int output_acc = 0;
 int output_gyro = 0;
 int output_mag = 0;
-int output_pressure = 0;
+int output_pressure = 1;
+int output_UV = 0;
+int output_o3 = 0;
+int output_GPS = 0;
 
-bool transmitting = true;
+bool transmitting = 1;
 
 #define USE_BUZZER            0
 #define BUZZER_PIN            29
@@ -25,8 +55,94 @@ bool transmitting = true;
 
 unsigned long _time = 0;
 double ax, ay, az, gx, gy, gz, mx, my, mz, pressure;
-GY91 gy91; // We need to make an instance of the GY91 library object
+GY91 gy91; 
 
+
+// Define global variables to store GPS data
+String utcTime = "-1";
+double latitude = -1;
+double longitude = -1;
+String NS = "-1";
+String EW = "-1";
+String quality = "-1";
+String alt = "-1";
+
+
+
+
+void tcaselect(uint8_t i) {
+  if (i > 7) return;
+
+  Wire1.beginTransmission(TCAADDR);
+  Wire1.write(1 << i);
+  Wire1.endTransmission();
+}
+
+
+void turn_on_UV(int port) {
+  tcaselect(port);
+
+  while (!ltr.begin(&Wire1)) {
+    delay(100);
+    Serial.println("UV not connected");
+
+  }
+  Serial.print("UV");
+  Serial.print(port);
+  Serial.println(" ok");
+  ltr.setMode(LTR390_MODE_UVS);
+  if (ltr.getMode() == LTR390_MODE_ALS) {
+    Serial.println("In ALS mode");
+  } else {
+    Serial.println("In UVS mode");
+  }
+
+  ltr.setGain(LTR390_GAIN_3);
+  Serial.print("Gain : ");
+  switch (ltr.getGain()) {
+    case LTR390_GAIN_1: Serial.println(1); break;
+    case LTR390_GAIN_3: Serial.println(3); break;
+    case LTR390_GAIN_6: Serial.println(6); break;
+    case LTR390_GAIN_9: Serial.println(9); break;
+    case LTR390_GAIN_18: Serial.println(18); break;
+  }
+
+  ltr.setResolution(LTR390_RESOLUTION_16BIT);
+  Serial.print("Resolution : ");
+  switch (ltr.getResolution()) {
+    case LTR390_RESOLUTION_13BIT: Serial.println(13); break;
+    case LTR390_RESOLUTION_16BIT: Serial.println(16); break;
+    case LTR390_RESOLUTION_17BIT: Serial.println(17); break;
+    case LTR390_RESOLUTION_18BIT: Serial.println(18); break;
+    case LTR390_RESOLUTION_19BIT: Serial.println(19); break;
+    case LTR390_RESOLUTION_20BIT: Serial.println(20); break;
+  }
+
+  ltr.setThresholds(100, 1000);
+  ltr.configInterrupt(true, LTR390_MODE_UVS);
+
+
+}
+
+
+void scan_multiplexer() {
+  Serial.println("\nTCAScanner ready!");
+
+  for (uint8_t t = 0; t < 8; t++) {
+    tcaselect(t);
+    Serial.print("TCA Port #"); Serial.print(t); Serial.print("\t");
+
+    for (uint8_t addr = 0; addr <= 127; addr++) {
+      if (addr == TCAADDR) continue;
+
+      Wire1.beginTransmission(addr);
+      if (!Wire1.endTransmission()) {
+        Serial.print("Found I2C 0x");  Serial.println(addr, HEX);
+      }
+    }
+  }
+  Serial.println("\ndone");
+}
 
 int melody[] = {
   NOTE_E5, NOTE_B4, NOTE_C5, NOTE_D5, NOTE_C5, NOTE_B4,
@@ -130,10 +246,19 @@ void beep(int times) {
 }
 
 void setup() {
+  // wait for serial to start, if not transmitting
+  if  (!transmitting) {
+    while (!Serial);
+  }
+
   Serial.begin(9600);
   Serial.println("Starting setup of cansat...");
 
+  GPS_SERIAL.begin(GPS_BAUDRATE);
+
   analogWriteResolution(16);
+  analogReadResolution(12);
+
 
   digitalWriteFast(BUZZER_PIN, LOW);
 
@@ -154,6 +279,14 @@ void setup() {
   Serial.println("Found RFM96 radio, and it is working as expected");
   rfm96.setTxPower(5); // +5 dBm, approx 3 mW, which is quite low
 
+
+  Wire1.begin();
+  Serial.println("Adafruit LTR-390 test");
+  for (int i = 0; i <= 5; i++ ) {
+    turn_on_UV(i);
+    delay(10);
+  }
+
   beep(1);
   Serial.println("End of setup");
   Serial.println();
@@ -161,7 +294,7 @@ void setup() {
 };
 
 void handleCommand(String command) {
-  switch(command.charAt(0)) {
+  switch (command.charAt(0)) {
     case 'T':
       output_temp = !output_temp;
       Serial.println("Temperature output toggled");
@@ -201,19 +334,25 @@ void handleCommand(String command) {
 void loop() {
   static unsigned long lastTransmitTime = 0;
   const unsigned long transmitInterval = 500;
+  static unsigned long lastGPSReadTime = 0; 
+  const unsigned long GPSReadInterval = 10;
+  
 
-  // Handle commands from the radio monitor if available
-  handleRadioCommands();
+
   // Check if it's time to transmit sensor data
   if (millis() - lastTransmitTime >= transmitInterval) {
-      Serial.println(rfm96.whatMode());
-    transmitSensorData();
-      Serial.println(rfm96.whatMode());
+    transmitSensorData(); //transmiting includes getting data, this could be changed to be like gps??
     lastTransmitTime = millis(); // Update the last transmit time
+    
   }
-
+  if (millis() - lastGPSReadTime >= GPSReadInterval) {
+    readGPSData();
+    lastGPSReadTime = millis(); // Update the last GPS read time
+  }
+  
   // Handle commands from the Serial monitor if available
   handleSerialCommands();
+
 }
 
 void handleSerialCommands() {
@@ -229,21 +368,12 @@ void handleSerialCommands() {
     }
   }
 }
-void handleRadioCommands() {
-rfm96.setModeRx();
-  while (rfm96.available()) {
-      Serial.println("in radio rec");
-      Serial.println(rfm96.whatMode());
-    char command = (char)rfm96.read();
-      Serial.println("post read rec");
-    handleCommand(String(command));
-  }
-}
+
 
 void transmitSensorData() {
-
   if (output_temp) {
     // Transmit temperature data
+
     float temp = read_temp_direct();
     Serial.print("Temperature: ");
     Serial.println(temp);
@@ -330,24 +460,110 @@ void transmitSensorData() {
   }
 
   if (output_pressure) {
-    float pressure_cmbar = pressure / 1000.0; // Convert pressure to centibar
+    pressure = gy91.readPressure();
+
+    double pressure_cmbar = pressure / 1000.0; // Convert pressure to centibar
+
     Serial.print("Pressure: ");
     Serial.println(pressure_cmbar, 4); // Print with 4 decimal places
     rfm96.printToBuffer(pressure_cmbar, 4); // Add to buffer with 4 decimal places
     rfm96.printToBuffer(", ");
   }
 
+  if (output_UV) {
+    float UV;
+    Serial.print("UV: ");
+
+    for (int i = 0; i <= 5; i++) {
+      tcaselect(i);
+      if (ltr.newDataAvailable()) {
+        UV = ltr.readUVS();
+        Serial.print(UV);
+        Serial.print("\t");
+        rfm96.printToBuffer(UV);
+        rfm96.printToBuffer(", ");
+      }
+
+
+    }
+    Serial.print("\n");
+  }
+  if (output_o3) {
+    // TODO: take a running average of the values
+    double gasValue = analogRead(Vgas) * (3.3 / 4095.0);
+    double refValue = (analogRead(Vref) * (3.3 / 4095.0));
+    //refValue = 3.3 /2 ; //debuging, remove
+    double o3tempValue = analogRead(Vtemp) * (3.3 / 4095.0);
+
+    double o3Temp = 87 / 3.3 * o3tempValue - 18.0;
+
+    // calculate  ozone concentration using the  gas and reference values
+    double Cx = 1 / M * (gasValue - refValue);
+
+    // print the averages to the Serial Monitor
+    Serial.print(" gas = ");
+    Serial.print(gasValue, 4);
+    Serial.print("\t ref = ");
+    Serial.print(refValue, 4);
+    Serial.print("\t o3tempValue = ");
+    Serial.print(o3tempValue);
+    Serial.print("\t o3temp = ");
+    Serial.print(o3Temp);
+    Serial.print("\t ozone conc (ppm) = ");
+    Serial.println(Cx, 4);
+
+    rfm96.printToBuffer(Cx);
+    rfm96.printToBuffer(", ");
+
+  }
+  if (output_GPS) {
+        Serial.print("UTC Time: ");
+        Serial.println(utcTime);
+        Serial.print("Latitude: ");
+        Serial.println(latitude);
+        Serial.print("NS Indicator: ");
+        Serial.println(NS);
+        Serial.print("Longitude: ");
+        Serial.println(longitude);
+        Serial.print("EW Indicator: ");
+        Serial.println(EW);
+        Serial.print("Quality: ");
+        Serial.println(quality);
+        Serial.print("Altitude: ");
+        Serial.println(alt);
+      }
+    
+
+  Serial.println("----------------------------------------------------------------");
+  //rfm96.printToBuffer("\n");
+
+
+
 }
 
 
 
 
+double convertToDecimalDegrees(const char *latLon, const char *direction) {
+  char deg[4] = {0};
+  char *dot, *min;
+  int len;
+  double dec = 0;
+
+  if ((dot = strchr(latLon, '.')))
+  { // decimal point was found
+    min = dot - 2;                          // mark the start of minutes 2 chars back
+    len = min - latLon;                     // find the length of degrees
+    strncpy(deg, latLon, len);              // copy the degree string to allow conversion to float
+    dec = atof(deg) + atof(min) / 60;       // convert to float
+    if (strcmp(direction, "S") == 0 || strcmp(direction, "W") == 0)
+      dec *= -1;
+  }
+  return dec;
+}
 // This function reads the Cansat temperature in centigrades. It
 // uses the Steinhart-Hart equation
 double read_temp_direct() {
-  // This should be set only once in setup, but for simplicity we do it here
-  analogReadResolution(12);
-
   double R_NTC, log_NTC;
   uint16_t ARead = analogRead(22);
   R_NTC = 4700 * ARead / (4095.0 - ARead);
@@ -355,4 +571,32 @@ double read_temp_direct() {
 
   // The line below is the Steinhart-Hart equation
   return 1 / (3.354016E-3 + 2.569850E-4 * log_NTC + 2.620131E-6 * log_NTC * log_NTC + 6.383091E-8 * log_NTC * log_NTC * log_NTC) - 273.15;
+}
+
+void readGPSData() {
+    if (output_GPS && GPS_SERIAL.available() > 0) { // Check if data is available from GPS
+      String gpsData = GPS_SERIAL.readStringUntil('\n'); // Read the GPS data until newline character
+
+      // Check if the received data is a valid GGA sentence
+      if (gpsData.startsWith("$GNGGA")) {
+        // Split the NMEA sentence by commas
+        String tokens[15];
+        int index = 0;
+        int from = 0;
+        int to;
+        while ((to = gpsData.indexOf(',', from)) != -1 && index < 15) {
+          tokens[index++] = gpsData.substring(from, to);
+          from = to + 1;
+        }
+
+        utcTime = tokens[1];
+        latitude = convertToDecimalDegrees(tokens[2].c_str(), tokens[3].c_str());
+        NS = tokens[3];
+        longitude = convertToDecimalDegrees(tokens[4].c_str(), tokens[5].c_str());
+        EW = tokens[5];
+        quality = tokens[6];
+        alt = tokens[7];
+      }
+    }
+  
 }
