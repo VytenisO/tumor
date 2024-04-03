@@ -59,12 +59,14 @@ void loop()
 			mz -= 127;
 			int time = ((uint16_t *))local_cursor[6];
 			sprintf(str, "Sensor %d received:\n\t %d UV counts\n\t %d AL counts\n\t (%d %d %d) normalised magnetometer vector\n\t %d [ms] time", i, uv, al, mx, my, mz, time);
+			Serial.println(str);
 			local_cursor += 8;
 		}
 		uint16_t o3 = *((uint16_t *)(&package[31]));
 		float do3 = o3;
 		do3 = do3 * O3_MAX / 0xFFFF;
 		sprintf(str, "Ozone sensor registered %f ppm O3", do3);
+		Serial.println(str);
 	}
 
 	if (millis() - time_counter > 10000)

@@ -6,12 +6,16 @@
 #include "pitches.h"
 #include "Wire.h"
 #include "Adafruit_LTR390.h"
+#include <stdio.h>
 
 #define USE_SD 0
 #define TCAADDR 0x70
 
 #define GPS_SERIAL Serial1
 #define GPS_BAUDRATE 9600
+
+// Change to 0 if in release mode
+#define DEBUG_MODE 1
 
 Cansat_RFM96 rfm96(433500, USE_SD);
 Adafruit_LTR390 ltr = Adafruit_LTR390();
@@ -33,7 +37,6 @@ float Voffset = 0.0; // 0 is a reasonable approximation
 // scan the sensor for the code
 
 const double M = -56.83 * 499 * pow(10, -9) * pow(10, 3); // in (V / ppm)
-
 
 bool transmitting = 1;
 
@@ -190,7 +193,8 @@ void setup()
     // wait for serial to start, if not transmitting
     if (!transmitting)
     {
-        while (!Serial);
+        while (!Serial)
+            ;
     }
 
     Serial.begin(9600);
@@ -250,11 +254,21 @@ void loop()
 
 void transmitSensorData()
 {
-
-    for (int i = 0; i < N_UVS; i++) {
+    uint8_t buffer_count = 0, sent_length = 0;
+#if DEBUG_MODE
+    char str[256];
+#endif
+    for (int i = 0; i < N_UVS; i++)
+    {
         readUVFrame(i);
-        unsigned long frame = *(unsigned long *)uv_frame;
-        rfm96.printToBuffer(frame, 0);
+#if DEBUG_MODE
+        sprintf(str, "UV frame number %d of value [%d %d %d %d %d %d %d %d] sent",
+                i, uv_frame[0], uv_frame[1], uv_frame[2], uv_frame[3], uv_frame[4], uv_frame[5], uv_frame[6], uv_frame[7]);
+        Serial.println(str);
+        sprintf(str, "Unsigned long value of the frame is %lu", *(unsigned long *)uv_frame);
+        Serial.println(str);
+#endif
+        buffer_count += rfm96.printToBuffer(frame, 0);
     }
     // TODO: take a running average of the values
     double gasValue = analogRead(Vgas) * (3.3 / 4095.0);
@@ -268,14 +282,22 @@ void transmitSensorData()
     double Cx = 1 / M * (gasValue - refValue);
     O3_data[O3_index = (O3_index + 1) % N_O3] = Cx;
     double avCx = 0;
-    for (int i = 0; i < N_O3; i++) {
+    for (int i = 0; i < N_O3; i++)
+    {
         avCx += O3_data[i];
     }
     avCx /= N_O3 * O3_MAX;
     uint16_t ulCx = (uint16_t)(avCx * 0xFFFF);
-    rfm96.writeToBuffer((uint8_t*)&ulCx, 2);
+#if DEBUG_MODE
 
-    rfm96.send();
+    sprintf(str, "O3 frame of value %d sent", ulCx);
+    Serial.println(str);
+#endif
+    buffer_count += rfm96.writeToBuffer((uint8_t *)&ulCx, 2);
+    sent_length = rfm96.send();
+#if DEBUG_MODE
+    sprintf(str, "RFM96 module received %d bytes to send, sent %d bytes", buffer_count, sent_length);
+#endif
 }
 
 // Read UV sensor frame in the form of [UV UV AL Mx My Mz time time]
