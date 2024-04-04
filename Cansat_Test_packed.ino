@@ -20,7 +20,7 @@
     do { \
         char buffer[256]; \
         sprintf(buffer, format, ##__VA_ARGS__); \
-        Serial.println("%s\n", buffer); \
+        Serial.println(buffer); \
     } while (0)
 
 Cansat_RFM96 rfm96(433500, USE_SD);
