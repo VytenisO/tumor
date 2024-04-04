@@ -16,6 +16,12 @@
 
 // Change to 0 if in release mode
 #define DEBUG_MODE 1
+#define LOG(format, ...) \
+    do { \
+        char buffer[256]; \
+        sprintf(buffer, format, ##__VA_ARGS__); \
+        Serial.println("%s\n", buffer); \
+    } while (0)
 
 Cansat_RFM96 rfm96(433500, USE_SD);
 Adafruit_LTR390 ltr = Adafruit_LTR390();
@@ -247,8 +253,14 @@ void loop()
     // Check if it's time to transmit sensor data
     if (millis() - lastTransmitTime >= transmitInterval)
     {
+#if DEBUG_MODE
+        unsigned long start = millis();
+#endif
         transmitSensorData();        // transmiting includes getting data, this could be changed to be like gps??
         lastTransmitTime = millis(); // Update the last transmit time
+#if DEBUG_MODE
+        LOG("Total sampling + transmission time was %lu ms", lastTransmitTime - start);
+#endif
     }
 }
 
@@ -256,20 +268,32 @@ void transmitSensorData()
 {
     uint8_t buffer_count = 0, sent_length = 0;
 #if DEBUG_MODE
-    char str[256];
+    unsigned long reading_time, transmitting_time;
 #endif
     for (int i = 0; i < N_UVS; i++)
     {
+#if DEBUG_MODE
+        reading_time = millis();
+#endif
         readUVFrame(i);
 #if DEBUG_MODE
-        sprintf(str, "UV frame number %d of value [%d %d %d %d %d %d %d %d] sent",
+        reading_time = millis() - reading_time;
+        LOG("Single UV frame reading time was %lu ms", reading_time);
+        LOG("UV frame number %d of value [%d %d %d %d %d %d %d %d] sent",
                 i, uv_frame[0], uv_frame[1], uv_frame[2], uv_frame[3], uv_frame[4], uv_frame[5], uv_frame[6], uv_frame[7]);
-        Serial.println(str);
-        sprintf(str, "Unsigned long value of the frame is %lu", *(unsigned long *)uv_frame);
-        Serial.println(str);
+        LOG("Unsigned long value of the frame is %lu ms", *(unsigned long *)uv_frame);
+        transmitting_time = millis();
 #endif
-        buffer_count += rfm96.printToBuffer(frame, 0);
+        buffer_count += rfm96.writeToBuffer(uv_frame, 8);
+#if DEBUG_MODE
+        transmitting_time = millis() - transmitting_time;
+        LOG("UV frame number %d transmitted in %lu ms", i, transmitting_time);
+#endif
     }
+
+#if DEBUG_MODE
+    reading_time = millis();
+#endif
     // TODO: take a running average of the values
     double gasValue = analogRead(Vgas) * (3.3 / 4095.0);
     double refValue = (analogRead(Vref) * (3.3 / 4095.0));
@@ -288,15 +312,17 @@ void transmitSensorData()
     }
     avCx /= N_O3 * O3_MAX;
     uint16_t ulCx = (uint16_t)(avCx * 0xFFFF);
-#if DEBUG_MODE
-
-    sprintf(str, "O3 frame of value %d sent", ulCx);
-    Serial.println(str);
+    #if DEBUG_MODE
+    reading_time = millis() - reading_time;
+    LOG("O3 frame of value %d sampled in %lu ms", ulCx, reading_time);
+    transmitting_time = millis();
 #endif
     buffer_count += rfm96.writeToBuffer((uint8_t *)&ulCx, 2);
     sent_length = rfm96.send();
 #if DEBUG_MODE
-    sprintf(str, "RFM96 module received %d bytes to send, sent %d bytes", buffer_count, sent_length);
+    transmitting_time = transmitting_time - millis();
+    LOG("O3 frame sent in %lu ms", transmitting_time);
+    LOG("RFM96 module received %d bytes to send, sent %d bytes", buffer_count, sent_length);
 #endif
 }
 
