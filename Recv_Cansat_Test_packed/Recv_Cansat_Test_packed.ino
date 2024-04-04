@@ -59,7 +59,7 @@ void loop()
 			mx -= 127;
 			my -= 127;
 			mz -= 127;
-			int time = ((uint16_t *))local_cursor[6];
+			int time = (uint16_t *)local_cursor[6];
 			sprintf(str, "Sensor %d received:\n\t %d UV counts\n\t %d AL counts\n\t (%d %d %d) normalised magnetometer vector\n\t %d [ms] time", i, uv, al, mx, my, mz, time);
 			Serial.println(str);
 			local_cursor += 8;

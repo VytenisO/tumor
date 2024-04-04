@@ -69,7 +69,7 @@ bool transmitting = 1;
 unsigned long _time = 0;
 double ax, ay, az, gx, gy, gz, mx, my, mz, pressure;
 // Current O3 running average index
-int o3_index = 0;
+int O3_index = 0;
 
 // 8 byte frame of [UV UV AL Mx My Mz time time]
 uint8_t uv_frame[8];
@@ -214,7 +214,7 @@ void setup()
     if (!gy91.init())
     {
         Serial.println("Could not initiate gy91");
-        beep(2);
+        //beep(2);
         while (1)
             ;
     }
@@ -223,7 +223,7 @@ void setup()
     if (!rfm96.init())
     {
         Serial.println("Init of radio failed, stopping");
-        beep(2);
+        //beep(2);
         while (1)
             ;
     }
@@ -238,7 +238,7 @@ void setup()
         delay(10);
     }
 
-    beep(1);
+    //beep(1);
     Serial.println("End of setup");
     Serial.println();
 };
@@ -343,7 +343,7 @@ void readUVFrame(int sensor_id)
         my += gy91.my;
         mz += gy91.mz;
     }
-    unit32_t uv, al;
+    uint32_t uv, al;
     tcaselect(sensor_id);
     ltr.setMode(LTR390_MODE_UVS);
     if (ltr.newDataAvailable())
@@ -364,9 +364,9 @@ void readUVFrame(int sensor_id)
         my += gy91.my;
         mz += gy91.mz;
     }
-    mx /= MAGNETOMETER_SAMPLE * 2;
-    my /= MAGNETOMETER_SAMPLE * 2;
-    mz /= MAGNETOMETER_SAMPLE * 2;
+    mx /= MAGNETOMETER_SAMPLES * 2;
+    my /= MAGNETOMETER_SAMPLES * 2;
+    mz /= MAGNETOMETER_SAMPLES * 2;
     double magnitude = sqrt(mx * mx + my * my + mz * mz);
     if (magnitude < 0.001)
         magnitude = 1;
