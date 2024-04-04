@@ -45,6 +45,7 @@ void loop()
 	{
 		char str[1024];
 		sprintf(str, "Time elapsed since the last received package or 10 second count is %lu ms", millis() - time_counter);
+		Serial.println(str);
 		time_counter = millis();
 
 		readPackage();
