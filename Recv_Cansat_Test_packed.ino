@@ -43,11 +43,12 @@ void loop()
 {
 	while (rfm96.available())
 	{
+		char str[1024];
+		sprintf(str, "Time elapsed since the last received package or 10 second count is %lu ms", millis() - time_counter);
 		time_counter = millis();
 
 		readPackage();
 		uint8_t * local_cursor = package;
-		char str[1024];
 		for (int i = 0; i < 4; i++) {
 			int uv = ((uint16_t *)local_cursor)[0];
 			int al = local_cursor[2] * ALS_MAX / 256;
