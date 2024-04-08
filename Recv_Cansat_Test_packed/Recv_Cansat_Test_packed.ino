@@ -2,11 +2,19 @@
 #include <stdio.h>
 #define USE_SD 0
 
+// longitude, latitude, altitude and time from GPS + altitude estimated from barometric and thermal data
+struct gpsFrame{
+    uint16_t lon;
+    uint16_t lat;
+    uint16_t alt;
+    uint16_t time;
+};
+
 Cansat_RFM96 rfm96(433500, USE_SD);
 unsigned long time_counter = 0;
 
-// Package is [UV UV AL Mx My Mz time time] * 4 +  [O3 O3] - 34B in total
-#define PACKAGE_SIZE 34
+// Package is [UV UV AL Mx My Mz time time] * 4 +  [O3 O3] + [lat lat lon lon alt alt time time] - 42B in total
+#define PACKAGE_SIZE 42
 uint8_t package[PACKAGE_SIZE];
 
 // Maximum expected value on ambient light sensor (to be verified)
@@ -59,16 +67,21 @@ void loop()
 			mx -= 127;
 			my -= 127;
 			mz -= 127;
-			int time = (uint16_t *)local_cursor[6];
+			int time = *(uint16_t *)(local_cursor + 6);
 			sprintf(str, "Sensor %d received:\n\t %d UV counts\n\t %d AL counts\n\t (%d %d %d) normalised magnetometer vector\n\t %d [ms] time", i, uv, al, mx, my, mz, time);
 			Serial.println(str);
 			local_cursor += 8;
 		}
-		uint16_t o3 = *((uint16_t *)(&package[31]));
+		uint16_t o3 = *((uint16_t *)(&package[32]));
 		float do3 = o3;
 		do3 = do3 * O3_MAX / 0xFFFF;
 		sprintf(str, "Ozone sensor registered %f ppm O3", do3);
 		Serial.println(str);
+		gpsFrame gps_frame = *(gpsFrame*)(package + 34);
+		sprintf(str, "GPS registered latitude of %d %d' %d'', longitude of %d %d' %d'', altitude of %d and time of %d",
+			gps_frame.lat / 3600, (gps_frame.lat / 60) % 60, gps_frame.lat % 60,
+			gps_frame.lon / 3600, (gps_frame.lon / 60) % 60, gps_frame.lon % 60,
+			gps_frame.alt, gps_frame.time);
 	}
 
 	if (millis() - time_counter > 10000)
