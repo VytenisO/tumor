@@ -240,13 +240,16 @@ void setup()
 void loop()
 {
     static unsigned long lastTransmitTime = 0;
-    const unsigned long transmitInterval = 500;
+    const unsigned long transmitInterval = 5000;
     // static unsigned long lastGPSReadTime = 0;
     // const unsigned long GPSReadInterval = 10;
 
     // Check if it's time to transmit sensor data
     if (millis() - lastTransmitTime >= transmitInterval)
     {
+#if DEBUG_MODE
+        Serial.println("\n\n\n\n\n");
+#endif
         buffer_count = 0;
         readUVFrames();
         readO3Frame();
@@ -279,7 +282,7 @@ void readUVFrames()
         LOG("Single UV frame reading time was %lu ms", reading_time);
         LOG("UV frame number %d of value [%d %d %d %d %d %d %d %d] sent",
             i, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
-        LOG("Unsigned long value of the frame is %lu ms", *(unsigned long *)data);
+        LOG("Unsigned long value of the frame is %llu", *(unsigned long long *)data);
 #endif
         buffer_count += rfm96.writeToBuffer(data, 8);
     }
@@ -325,7 +328,7 @@ void transmitSensorData()
     int sent_length = rfm96.send();
 #if DEBUG_MODE
     transmitting_time = transmitting_time - millis();
-    LOG("O3 frame sent in %lu ms", transmitting_time);
+    LOG("All frames sent in %lu ms", transmitting_time);
     LOG("RFM96 module received %d bytes to send, sent %d bytes", buffer_count, sent_length);
 #endif
 }
@@ -350,17 +353,13 @@ void readUVFrame(int sensor_id)
     uint32_t uv, al;
     tcaselect(sensor_id);
     ltr.setMode(LTR390_MODE_UVS);
-    if (ltr.newDataAvailable())
-    {
-        uv = ltr.readUVS();
-        uv_frame.uv = (uint16_t)uv;
-    }
+    while (!ltr.newDataAvailable());
+    uv = ltr.readUVS();
+    uv_frame.uv = (uint16_t)uv;
     ltr.setMode(LTR390_MODE_ALS);
-    if (ltr.newDataAvailable())
-    {
-        al = ltr.readALS() * 256 / ALS_MAX;
-        uv_frame.al = (uint8_t)al;
-    }
+    while (!ltr.newDataAvailable());
+    al = ltr.readALS() * 256 / ALS_MAX;
+    uv_frame.al = (uint8_t)al;
     for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
     {
         gy91.read_mag();
@@ -417,6 +416,7 @@ int timeToSeconds(const char *s)
     return hour * 3600 + minute * 60 + second;
 }
 
+
 void readGPSData()
 {
 #if DEBUG_MODE
@@ -428,7 +428,9 @@ void readGPSData()
         reading_time = millis();
 #endif                        // Check if data is available from GPS
         String gpsData = GPS_SERIAL.readStringUntil('\n'); // Read the GPS data until newline character
-
+#if DEBUG_MODE
+        LOG("\t\t%s", gpsData.c_str());
+#endif
         // Check if the received data is a valid GGA sentence
         if (gpsData.startsWith("$GNGGA"))
         {
@@ -444,17 +446,16 @@ void readGPSData()
             }
 
             utcTime = tokens[1];
-            Serial.println(utcTime.c_str());
 
             gps_frame.lat = convertToDecimalScaled(tokens[2].c_str(), 3600);
             gps_frame.lon = convertToDecimalScaled(tokens[4].c_str(), 3600);
-            gps_frame.alt = convertToDecimalScaled(tokens[4].c_str(), 1);
+            gps_frame.alt = convertToDecimalScaled(tokens[7].c_str(), 1);
             gps_frame.time = (uint16_t)timeToSeconds(tokens[1].c_str());
 #if DEBUG_MODE
-        reading_time = millis() - reading_time;
-        LOG("Single GPS frame reading time was %lu ms", reading_time);
-        LOG("GPS frame of value [%d %d %d %d] sent", gps_frame.lat, gps_frame.lon, gps_frame.alt, gps_frame.time);
-        LOG("Unsigned long value of the frame is %lu ms", *(unsigned long *)(&gps_frame));
+            reading_time = millis() - reading_time;
+            LOG("Single GPS frame reading time was %lu ms", reading_time);
+            LOG("GPS frame of value [%d %d %d %d] sent", gps_frame.lat, gps_frame.lon, gps_frame.alt, gps_frame.time);
+            LOG("Unsigned long value of the frame is %llu", *(unsigned long long *)(&gps_frame));
 #endif
         }
     }
