@@ -33,8 +33,8 @@ void loop() {
     rfm96.writeToBuffer(message);
     rfm96.writeToBuffer(message);
     rfm96.writeToBuffer(message);
-    message = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvt";  // 37 bytes
-    rfm96.writeToBuffer(message);
+    char message2[] = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvt";  // 37 bytes
+    rfm96.writeToBuffer(message2);
     rfm96.send();
     Serial.println("sent message of 337 bytes(2700 bits)");
     rxLength = 0;

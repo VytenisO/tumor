@@ -15,8 +15,6 @@ void setup() {
 uint8_t messageIsSent = 0;
 uint32_t txTime = 0;
 uint16_t bytesSent = 0;
-uint32_t rxTime = 0;
-uint16_t rxLength = 0;
 void loop() {
   if (!messageIsSent) {
     txTime = millis();
@@ -33,18 +31,15 @@ void loop() {
 
     messageIsSent = 1;
   }
-  char rxBuffer[400];
+  while (!rfm96.isTxReady())
+    ;
 
-  while (rfm96.available()) {
-    rxBuffer[rxLength++] = rfm96.read();
+  uint32_t txDoneTime = millis();
+  uint32_t transmissionTime = txDoneTime - txTime;
+  Serial.println("transmission time in ms: ");
+  Serial.println(transmissionTime);
+  Serial.println("application layer throughput aka goodput in bps:");
+  Serial.println(1000 * bytesSent * 8 / transmissionTime);
 
-    if (rxLength == 337) {
-      rxTime = millis();
-      uint32_t rtt = rxTime - txTime;
-      Serial.println("RTT in ms of: ");
-      Serial.println(rtt);
-      Serial.println("Throughput in bps, approx: ");
-      Serial.println(1000 * 2700 * 2 / rtt);
-      rxLength = 0;
-    }
-  }
+  delay(200000);
+}
