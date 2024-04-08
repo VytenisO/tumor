@@ -1,14 +1,7 @@
 #include <Cansat_RFM96.h>
 #include <stdio.h>
+#include "csutils.h"
 #define USE_SD 0
-
-// longitude, latitude, altitude and time from GPS + altitude estimated from barometric and thermal data
-struct gpsFrame{
-    uint16_t lon;
-    uint16_t lat;
-    uint16_t alt;
-    uint16_t time;
-};
 
 Cansat_RFM96 rfm96(433500, USE_SD);
 unsigned long time_counter = 0;
@@ -59,16 +52,9 @@ void loop()
 		readPackage();
 		uint8_t * local_cursor = package;
 		for (int i = 0; i < 4; i++) {
-			int uv = ((uint16_t *)local_cursor)[0];
-			int al = local_cursor[2] * ALS_MAX / 256;
-			int mx = local_cursor[3];
-			int my = local_cursor[4];
-			int mz = local_cursor[5];
-			mx -= 127;
-			my -= 127;
-			mz -= 127;
-			int time = *(uint16_t *)(local_cursor + 6);
-			sprintf(str, "Sensor %d received:\n\t %d UV counts\n\t %d AL counts\n\t (%d %d %d) normalised magnetometer vector\n\t %d [ms] time", i, uv, al, mx, my, mz, time);
+			uvFrame *uv_frame = (uvFrame *)local_cursor;
+			sprintf(str, "Sensor %d received:\n\t %d UV counts\n\t %d AL counts\n\t (%d %d %d) normalised magnetometer vector\n\t %d [ms] time", 
+        i, uv_frame->uv, uv_frame->al, uv_frame->mx, uv_frame->my, uv_frame->mz, uv_frame->time);
 			Serial.println(str);
 			local_cursor += 8;
 		}
