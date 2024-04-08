@@ -36,15 +36,15 @@ float Voffset = 0.0;  // 0 is a reasonable approximation
 const double M = -56.83 * 499 * pow(10, -9) * pow(10, 3) ;// in (V / ppm)
 
 // default output from sensors, on/off
-int output_temp = 0;
-int output_vin = 0;
-int output_acc = 0;
-int output_gyro = 0;
-int output_mag = 0;
+int output_temp = 1;
+int output_vin = 1;
+int output_acc = 1;
+int output_gyro = 1;
+int output_mag = 1;
 int output_pressure = 1;
-int output_UV = 0;
-int output_o3 = 0;
-int output_GPS = 0;
+int output_UV = 1;
+int output_o3 = 1;
+int output_GPS = 1;
 
 bool transmitting = 1;
 
@@ -282,7 +282,7 @@ void setup() {
 
   Wire1.begin();
   Serial.println("Adafruit LTR-390 test");
-  for (int i = 0; i <= 5; i++ ) {
+  for (int i = 0; i < 4; i++ ) {
     turn_on_UV(i);
     delay(10);
   }
