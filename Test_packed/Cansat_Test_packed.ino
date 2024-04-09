@@ -5,6 +5,7 @@
 #include <HardwareSerial.h>
 #include "Wire.h"
 #include "Adafruit_LTR390.h"
+#include <TinyGPSPlus.h>
 #include "csutils.h"
 #include <stdio.h>
 
@@ -34,6 +35,8 @@
 
 Cansat_RFM96 rfm96(433500, USE_SD);
 Adafruit_LTR390 ltr = Adafruit_LTR390();
+GY91 gy91;
+TinyGPSPlus gps;
 
 // Ozone pins
 const int Vgas = A17;
@@ -51,34 +54,18 @@ float Voffset = 0.0; // 0 is a reasonable approximation
 
 const double M = -56.83 * 499 * pow(10, -9) * pow(10, 3); // in (V / ppm)
 
-bool transmitting = 1;
+double mx, my, mz, pressure;
 
-
-double ax, ay, az, gx, gy, gz, mx, my, mz, pressure;
-// Current O3 running average index
-int O3_index = 0;
-
-// 8 byte frame of [UV UV AL Mx My Mz time time]
-// uint8_t uv_frame[8];
 uvFrame uv_frame;
-
-uint8_t buffer_count;
-
-
 gpsFrame gps_frame;
 
 // Running average array for O3 sensor
 double O3_data[N_O3];
-GY91 gy91;
+// Current O3 running average index
+int O3_index = 0;
 
-// Define global variables to store GPS data
-String utcTime = "-1";
-double latitude = -1;
-double longitude = -1;
-String NS = "-1";
-String EW = "-1";
-String quality = "-1";
-String alt = "-1";
+uint8_t buffer_count;
+
 
 void tcaselect(uint8_t i)
 {
@@ -190,13 +177,6 @@ void scan_multiplexer()
 
 void setup()
 {
-    // wait for serial to start, if not transmitting
-    if (!transmitting)
-    {
-        while (!Serial)
-            ;
-    }
-
     Serial.begin(9600);
     Serial.println("Starting setup of cansat...");
 
@@ -253,7 +233,7 @@ void loop()
         buffer_count = 0;
         readUVFrames();
         readO3Frame();
-        readGPSData();
+        readTinyGPSData();
 #if DEBUG_MODE
         unsigned long start = millis();
 #endif
@@ -416,6 +396,22 @@ int timeToSeconds(const char *s)
     return hour * 3600 + minute * 60 + second;
 }
 
+void readTinyGPSData()
+{
+#if DEBUG_MODE
+    unsigned long reading_time = millis();
+#endif
+    gps_frame.lat = (uint16_t)(gps.location.lat() * 3600);
+    gps_frame.lon = (uint16_t)(gps.location.lng() * 3600);
+    gps_frame.alt = (uint16_t)(gps.altitude.meters());
+    gps_frame.time = (uint16_t)(gps.time.centisecond() / 10 + gps.time.second() * 10 + gps.time.minute() * 600);
+#if DEBUG_MODE
+    reading_time = millis() - reading_time;
+    LOG("GPS data read in %lu ms", reading_time);
+    LOG("GPS data read as:\n\tlatitude = %du''\n\tlongitude = %du''\n\taltitude = %du m\n\ttime = %du ds",
+        gps_frame.lat, gps_frame.lon, gps_frame.alt, gps_frame.time);
+#endif
+}
 
 void readGPSData()
 {
@@ -444,8 +440,6 @@ void readGPSData()
                 tokens[index++] = gpsData.substring(from, to);
                 from = to + 1;
             }
-
-            utcTime = tokens[1];
 
             gps_frame.lat = convertToDecimalScaled(tokens[2].c_str(), 3600);
             gps_frame.lon = convertToDecimalScaled(tokens[4].c_str(), 3600);
