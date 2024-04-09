@@ -1,8 +1,6 @@
 #include <Cansat_RFM96.h>
 Cansat_RFM96 rfm96(434500, 0);
 #define THROUGHPUT_TEST 0
-//String startFlag = "å";
-//String stopFlag = "æ";
 
 void setup() {
   Serial.begin(9600);
@@ -35,10 +33,11 @@ void loop() {
   delayMs = 100000;
 #endif
 
-  rfm96.printToBuffer(millis());
-  char message[] = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvttpjyddodpcqnpaqpstzyavvxlpcgsubmkqijvyisiqrknxathmgcjplpkseazxrl";  // 100 bytes
+  //rfm96.printToBuffer(millis());
+  //char message[] = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvttpjyddodpcqnpaqpstzyavvxlpcgsubmkqijvyisiqrknxathmgcjplpkseazxrl";  // 100 bytes
+  char message[] = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvttpjyddodp";  // 45 bytes
   rfm96.writeToBuffer(message);
   rfm96.send();
   Serial.println("sent message");
-  delay(delayMs);
+  delay(2000);
 }
