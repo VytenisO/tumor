@@ -26,9 +26,9 @@ void setup() {
 
   Serial.println("End of setup");
 }
-uint16_t length = 0;
-void loop() {
 
+void loop() {
+  uint16_t length = 0;
   while (rfm96.available()) {
     message[length++] = rfm96.read();
   }
@@ -42,9 +42,9 @@ void loop() {
       Serial.write(message, length);
     }
 
-    if ((millis() / 1000) > 60) {
+    if ((millis() / 1000) > 1800) {
+      Serial.println("number of errors");
       Serial.println(numberOfErrors);
-      length = 0;
     }
   }
 }

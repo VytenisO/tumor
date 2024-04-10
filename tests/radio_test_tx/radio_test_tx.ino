@@ -15,8 +15,7 @@ void setup() {
 }
 
 void loop() {
-  //String message = startFlag + "goodbye lads, goodbye lads, heilop" + stopFlag;
-  uint32_t delayMs = 4000;
+  uint32_t delayMs = 2000;
 
 #if THROUGHPUT_TEST
   uint32_t txTime = millis();
@@ -39,5 +38,5 @@ void loop() {
   rfm96.writeToBuffer(message);
   rfm96.send();
   Serial.println("sent message");
-  delay(2000);
+  delay(delayMs);
 }
