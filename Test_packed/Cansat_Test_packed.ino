@@ -33,6 +33,16 @@
 // Change to 0 if in release mode
 #define DEBUG_MODE 1
 
+// sensor flags
+#define O3_FLAG 0
+#define UV_FLAG 0
+#define GPS_FLAG 1
+#define AL_FLAG 0
+#define IMU_FLAG 0
+#define TINY_GPS 0
+
+#define TRANSMISSION_INTERVAL 500
+
 Cansat_RFM96 rfm96(433500, USE_SD);
 Adafruit_LTR390 ltr = Adafruit_LTR390();
 GY91 gy91;
@@ -65,7 +75,6 @@ double O3_data[N_O3];
 int O3_index = 0;
 
 uint8_t buffer_count;
-
 
 void tcaselect(uint8_t i)
 {
@@ -148,33 +157,6 @@ void turn_on_UV(int port)
     ltr.configInterrupt(true, LTR390_MODE_UVS);
 }
 
-void scan_multiplexer()
-{
-    Serial.println("\nTCAScanner ready!");
-
-    for (uint8_t t = 0; t < 8; t++)
-    {
-        tcaselect(t);
-        Serial.print("TCA Port #");
-        Serial.print(t);
-        Serial.print("\t");
-
-        for (uint8_t addr = 0; addr <= 127; addr++)
-        {
-            if (addr == TCAADDR)
-                continue;
-
-            Wire1.beginTransmission(addr);
-            if (!Wire1.endTransmission())
-            {
-                Serial.print("Found I2C 0x");
-                Serial.println(addr, HEX);
-            }
-        }
-    }
-    Serial.println("\ndone");
-}
-
 void setup()
 {
     Serial.begin(9600);
@@ -185,6 +167,7 @@ void setup()
     analogWriteResolution(16);
     analogReadResolution(12);
 
+#if IMU_FLAG
     if (!gy91.init())
     {
         Serial.println("Could not initiate gy91");
@@ -193,7 +176,7 @@ void setup()
             ;
     }
     Serial.println("Found gy91 module, and it is working as expected");
-
+#endif
     if (!rfm96.init())
     {
         Serial.println("Init of radio failed, stopping");
@@ -205,13 +188,14 @@ void setup()
     rfm96.setTxPower(5); // +5 dBm, approx 3 mW, which is quite low
 
     Wire1.begin();
+#if UV_FLAG
     Serial.println("Adafruit LTR-390 test");
     for (int i = 0; i < N_UVS; i++)
     {
         turn_on_UV(i);
         delay(10);
     }
-
+#endif
     // beep(1);
     Serial.println("End of setup");
     Serial.println();
@@ -220,20 +204,29 @@ void setup()
 void loop()
 {
     static unsigned long lastTransmitTime = 0;
-    const unsigned long transmitInterval = 5000;
     // static unsigned long lastGPSReadTime = 0;
     // const unsigned long GPSReadInterval = 10;
 
     // Check if it's time to transmit sensor data
-    if (millis() - lastTransmitTime >= transmitInterval)
+    if (millis() - lastTransmitTime >= TRANSMISSION_INTERVAL)
     {
 #if DEBUG_MODE
         Serial.println("\n\n\n\n\n");
 #endif
         buffer_count = 0;
+#if UV_FLAG
         readUVFrames();
+#endif
+#if O3_FLAG
         readO3Frame();
+#endif
+#if GPS_FLAG
+#if TINY_GPS
         readTinyGPSData();
+#else
+        readGPSData();
+#endif
+#endif
 #if DEBUG_MODE
         unsigned long start = millis();
 #endif
@@ -323,6 +316,7 @@ void readUVFrame(int sensor_id)
     mx = my = mz = 0;
     unsigned long time = millis();
     uv_frame.time = (uint16_t)time;
+#if IMU_FLAG
     for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
     {
         gy91.read_mag();
@@ -330,16 +324,24 @@ void readUVFrame(int sensor_id)
         my += gy91.my;
         mz += gy91.mz;
     }
+#endif
     uint32_t uv, al;
     tcaselect(sensor_id);
+#if AL_FLAG
     ltr.setMode(LTR390_MODE_UVS);
-    while (!ltr.newDataAvailable());
+#endif
+    while (!ltr.newDataAvailable())
+        ;
     uv = ltr.readUVS();
     uv_frame.uv = (uint16_t)uv;
+#if AL_FLAG
     ltr.setMode(LTR390_MODE_ALS);
-    while (!ltr.newDataAvailable());
+    while (!ltr.newDataAvailable())
+        ;
     al = ltr.readALS() * 256 / ALS_MAX;
     uv_frame.al = (uint8_t)al;
+#endif
+#if IMU_FLAG
     for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
     {
         gy91.read_mag();
@@ -359,41 +361,33 @@ void readUVFrame(int sensor_id)
     uv_frame.mx = (int8_t)mx;
     uv_frame.my = (int8_t)my;
     uv_frame.mz = (int8_t)mz;
+#endif
 }
 
-uint16_t convertToDecimalScaled(const char *s, int scale)
+uint16_t extractAngular(const char *s)
 {
-    char value[4] = {0};
-    char *dot, *min;
-    int len;
+    char hour[2] = {0};
+    char minute[10] = {0};
+    int minlen = strlen(s) - 2;
     double dec = 0;
-
+    char *dot;
     if ((dot = strchr(s, '.')))
-    {                                     // decimal point was found
-        min = dot - 2;                    // mark the start of minutes 2 chars back
-        len = min - s;               // find the length of degrees
-        strncpy(value, s, len);        // copy the degree string to allow conversion to float
-        dec = atof(value) + atof(min) / 60; // convert to float
+    {
+        strncpy(hour, s, 2);
+        strncpy(minute, s, minlen);
+        dec = atof(hour) * 3600 + atof(minute) * 60;
     }
-    return (uint16_t)(dec * scale);
+    return (uint16_t)dec;
 }
 
 int timeToSeconds(const char *s)
 {
-    char *dot, value[2] = {0};
-    char s_shifted[256] = {0};
-    int hour = 0, minute = 0, second = 0;
-    if ((dot = strchr(s, '.')))
-    {
-        strncpy(s_shifted + 6 - s + dot, s, dot - s);
-        strncpy(value, s_shifted, 2);
-        hour = atoi(value);
-        strncpy(value, s_shifted + 2, 2);
-        minute = atoi(value);
-        strncpy(value, s_shifted + 4, 2);
-        second = atoi(value);
-    }
-    return hour * 3600 + minute * 60 + second;
+    char hour[2], minute[2], second[2];
+    int seclen = strlen(s) - 4;
+    strncpy(hour, s, 2);
+    strncpy(minute, s + 2, 2);
+    strncpy(second, s + 4, 2);
+    return atoi(hour) * 3600 + atoi(minute) * 60 + atoi(second);
 }
 
 void readTinyGPSData()
@@ -408,7 +402,7 @@ void readTinyGPSData()
 #if DEBUG_MODE
     reading_time = millis() - reading_time;
     LOG("GPS data read in %lu ms", reading_time);
-    LOG("GPS data read as:\n\tlatitude = %du''\n\tlongitude = %du''\n\taltitude = %du m\n\ttime = %du ds",
+    LOG("GPS data read as:\n\tlatitude = %lu''\n\tlongitude = %lu''\n\taltitude = %lu m\n\ttime = %lu ds",
         gps_frame.lat, gps_frame.lon, gps_frame.alt, gps_frame.time);
 #endif
 }
@@ -422,11 +416,16 @@ void readGPSData()
     {
 #if DEBUG_MODE
         reading_time = millis();
-#endif                        // Check if data is available from GPS
-        String gpsData = GPS_SERIAL.readStringUntil('\n'); // Read the GPS data until newline character
+#endif // Check if data is available from GPS
+        int attempts = 0;
+        String gpsData;
+        do
+        {
+            gpsData = GPS_SERIAL.readStringUntil('\n'); // Read the GPS data until newline character
 #if DEBUG_MODE
-        LOG("\t\t%s", gpsData.c_str());
+            LOG("\tGPS data received: %s", gpsData.c_str());
 #endif
+        } while (!gpsData.startsWith("$GNGGA"));
         // Check if the received data is a valid GGA sentence
         if (gpsData.startsWith("$GNGGA"))
         {
@@ -441,17 +440,23 @@ void readGPSData()
                 from = to + 1;
             }
 
-            gps_frame.lat = convertToDecimalScaled(tokens[2].c_str(), 3600);
-            gps_frame.lon = convertToDecimalScaled(tokens[4].c_str(), 3600);
-            gps_frame.alt = convertToDecimalScaled(tokens[7].c_str(), 1);
-            gps_frame.time = (uint16_t)timeToSeconds(tokens[1].c_str());
+            gps_frame.lat = extractAngular(tokens[2].c_str());
+            gps_frame.lon = extractAngular(tokens[4].c_str());
+            gps_frame.alt = (uint16_t)atof(tokens[9].c_str());
+            gps_frame.time = (uint16_t)(timeToSeconds(tokens[1].c_str()));
 #if DEBUG_MODE
-            reading_time = millis() - reading_time;
-            LOG("Single GPS frame reading time was %lu ms", reading_time);
+            // reading_time = millis() - reading_time;
+            // LOG("Single GPS frame reading time was %lu ms", reading_time);
             LOG("GPS frame of value [%d %d %d %d] sent", gps_frame.lat, gps_frame.lon, gps_frame.alt, gps_frame.time);
             LOG("Unsigned long value of the frame is %llu", *(unsigned long long *)(&gps_frame));
 #endif
         }
     }
+#if DEBUG_MODE
+    reading_time = millis() - reading_time;
+    LOG("GPS data read in %lu ms", reading_time);
+    LOG("GPS data read as:\n\tlatitude = %lu''\n\tlongitude = %lu''\n\taltitude = %lu m\n\ttime = %lu s",
+        gps_frame.lat, gps_frame.lon, gps_frame.alt, gps_frame.time);
+#endif
     buffer_count += rfm96.writeToBuffer((uint8_t *)(&gps_frame), 8);
 }
