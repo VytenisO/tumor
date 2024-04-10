@@ -22,15 +22,15 @@ int sampleCount = 0;
 
 void setup() {
   // initialize serial communications at 9600 bps:
-  analogReadResolution(12);
+  analogReadResolution(16);
   Serial.begin(9600);
 }
 void loop() {
   // at 0 ppm, gasValue = refValue
-  double gasValue = analogRead(Vgas) * (3.3/ 4095.0);
-  double refValue = analogRead(Vref) * (3.3 / 4095.0);
+  double gasValue = analogRead(Vgas) * (3.3/ 65535.0);
+  double refValue = analogRead(Vref) * (3.3 / 65535.0);
   //refValue = 3.3 /2 ; //debuging, remove
-  double tempValue = analogRead(Vtemp) * (3.3 / 4095.0);
+  double tempValue = analogRead(Vtemp) * (3.3 / 65535.0);
   double temp = 87/3.3 * tempValue - 18.0;
 
   // Sum up all the values
@@ -57,9 +57,9 @@ void loop() {
     // gas = 0.0047   ref = 0.3456  tempValue = 0.57  temp = -2.93  ozone conc (ppm) = 12.0222  M(V/ppm) = -0.03
 
     Serial.print(" gas = ");
-    Serial.print(avgGasValue, 4);
+    Serial.print(avgGasValue, 7);
     Serial.print("\t ref = ");
-    Serial.print(avgRefValue, 4);
+    Serial.print(avgRefValue, 7);
     Serial.print("\t tempValue = ");
     Serial.print(avgTempValue);
     Serial.print("\t temp = ");
