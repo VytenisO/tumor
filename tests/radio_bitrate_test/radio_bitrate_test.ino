@@ -18,12 +18,17 @@ uint16_t bytesSent = 0;
 void loop() {
   if (!messageIsSent) {
     txTime = millis();
-    char message[] = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvttpjyddodpcqnpaqpstzyavvxlpcgsubmkqijvyisiqrknxathmgcjplpkseazxrl";  // 100 bytes
+    /*char message[] = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvttpjyddodpcqnpaqpstzyavvxlpcgsubmkqijvyisiqrknxathmgcjplpkseazxrl";  // 100 bytes
     rfm96.writeToBuffer(message);
     rfm96.writeToBuffer(message);
     rfm96.writeToBuffer(message);
     char message2[] = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvt";  // 37 bytes
     rfm96.writeToBuffer(message2);
+    */
+
+    char message[] = "bdgvvkywwwskvdkiztkwchxvmpnrsxdzhbvttpjydd";  // 44 bytes
+    rfm96.writeToBuffer(message);
+
     bytesSent = rfm96.send();
     Serial.println("sent message of ");
     Serial.println(bytesSent);
