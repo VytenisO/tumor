@@ -19,7 +19,7 @@
 #define MAGNETOMETER_SAMPLES 10
 
 // Maximum expected value on ambient light sensor (to be verified)
-#define ALS_MAX 12750
+#define ALS_MAX 65000
 
 // How many UV sensors there are
 #define N_UVS 4
@@ -28,20 +28,25 @@
 #define O3_MAX 20.0
 
 // How many times is O3 data sampled to estimate average
-#define N_O3 16
+#define N_O3 1
+
+#define g_0 9.81   // Gravitational acceleration (m/s^2)
+#define R 287.06   // Specific gas constant (J/kg⋅K)
+#define alpha -0.0065   // Temperature gradient (K/m)
 
 // Change to 0 if in release mode
 #define DEBUG_MODE 1
 
 // sensor flags
-#define O3_FLAG 0
-#define UV_FLAG 0
+#define O3_FLAG 1
+#define UV_FLAG 1
 #define GPS_FLAG 1
-#define AL_FLAG 0
-#define IMU_FLAG 0
+#define AL_FLAG 1
+#define IMU_FLAG 1
 #define TINY_GPS 0
+#define BALT_FLAG 1
 
-#define TRANSMISSION_INTERVAL 500
+#define TRANSMISSION_INTERVAL 2100
 
 Cansat_RFM96 rfm96(433500, USE_SD);
 Adafruit_LTR390 ltr = Adafruit_LTR390();
@@ -226,6 +231,9 @@ void loop()
 #else
         readGPSData();
 #endif
+#if BALT_FLAG
+        readBarometricAltitudeFrame();
+#endif
 #endif
 #if DEBUG_MODE
         unsigned long start = millis();
@@ -267,10 +275,8 @@ void readO3Frame()
     unsigned long reading_time;
     reading_time = millis();
 #endif
-    // TODO: take a running average of the values
     double gasValue = analogRead(Vgas) * (3.3 / 4095.0);
     double refValue = (analogRead(Vref) * (3.3 / 4095.0));
-    // refValue = 3.3 /2 ; //debuging, remove
     double o3tempValue = analogRead(Vtemp) * (3.3 / 4095.0);
 
     double o3Temp = 87 / 3.3 * o3tempValue - 18.0;
@@ -287,7 +293,7 @@ void readO3Frame()
     uint16_t ulCx = (uint16_t)(avCx * 0xFFFF);
 #if DEBUG_MODE
     reading_time = millis() - reading_time;
-    LOG("O3 frame of value %d sampled in %lu ms", ulCx, reading_time);
+    LOG("O3 frame of value %lu sampled in %lu ms", ulCx, reading_time);
 #endif
     buffer_count += rfm96.writeToBuffer((uint8_t *)&ulCx, 2);
 }
@@ -304,6 +310,41 @@ void transmitSensorData()
     LOG("All frames sent in %lu ms", transmitting_time);
     LOG("RFM96 module received %d bytes to send, sent %d bytes", buffer_count, sent_length);
 #endif
+}
+
+// This function reads the Cansat temperature in centigrades. It
+// uses the Steinhart-Hart equation
+double read_temp_direct()
+{
+    double R_NTC, log_NTC;
+    uint16_t ARead = analogRead(22);
+    R_NTC = 4700 * ARead / (4095.0 - ARead);
+    log_NTC = log(R_NTC / 10000);
+
+    // The line below is the Steinhart-Hart equation
+    return 1 / (3.354016E-3 + 2.569850E-4 * log_NTC + 2.620131E-6 * log_NTC * log_NTC + 6.383091E-8 * log_NTC * log_NTC * log_NTC) - 273.15;
+}
+
+void readBarometricAltitudeFrame()
+{
+#if DEBUG_MODE
+    unsigned long reading_time;
+    reading_time = millis();
+#endif
+    // Define starting values
+    float T_1 = 288.15;            // Standard temperature at sea level in Kelvin (15°C)
+    float p_1 = 101325;            // Standard pressure at sea level in Pascal (1013.25 hPa)
+    float h_1 = 0;                 // Starting altitude in meters
+    float p = gy91.readPressure(); // gets pressure in pascal
+    float T = read_temp_direct();  // temp in C
+    T = T + 273.15;                // temp in K
+    float h = (T_1 / alpha) * (pow((p / p_1), (-alpha * R) / g_0) - 1) + h_1;
+    uint16_t altitude = (uint16_t)h;
+#if DEBUG_MODE
+    reading_time = millis() - reading_time;
+    LOG("Barometric altitude frame of value %lu sampled in %lu ms", altitude, reading_time); //?
+#endif
+    buffer_count += rfm96.writeToBuffer((uint8_t *)&altitude, 2);
 }
 
 // Read UV sensor frame in the form of [UV UV AL Mx My Mz time time]
@@ -338,7 +379,7 @@ void readUVFrame(int sensor_id)
     ltr.setMode(LTR390_MODE_ALS);
     while (!ltr.newDataAvailable())
         ;
-    al = ltr.readALS() * 256 / ALS_MAX;
+    al = ltr.readALS() >> 8;
     uv_frame.al = (uint8_t)al;
 #endif
 #if IMU_FLAG
