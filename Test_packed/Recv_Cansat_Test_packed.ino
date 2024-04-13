@@ -41,21 +41,20 @@ void setup()
 	}
 
 #if DEBUG_MODE
-	  Serial.println("Found RFM96 radio, and it is working as expected");
+	Serial.println("Found RFM96 radio, and it is working as expected");
 #endif
-	  rfm96.setTxPower(5); // +5 dBm, approx 3 mW, which is quite low
+	rfm96.setTxPower(5); // +5 dBm, approx 3 mW, which is quite low
 #if DEBUG_MODE
-	  Serial.println("End of setup\n\n\n\n");
+	Serial.println("End of setup\n\n\n\n");
 #else
-    LOG("\n\n\n\n\n\n\n\n\n\n%s,%s,%s,%s,%s,%s",
-      "UV_1,AL_1,Mx_1,My_1,Mz_1,time_1",
-      "UV_2,AL_2,Mx_2,My_2,Mz_2,time_2",
-      "UV_3,AL_3,Mx_3,My_3,Mz_3,time_3",
-      "UV_4,AL_4,Mx_4,My_4,Mz_4,time_4",
-      "lon_deg,lon_min,lon_sec,lat_deg,lat_min,lat_sec,alt,time_GPS",
-      "O3,alt_bt");
+	LOG("\n\n\n\n\n\n\n\n\n\n%s,%s,%s,%s,%s,%s",
+		"UV_1,AL_1,Mx_1,My_1,Mz_1,time_1",
+		"UV_2,AL_2,Mx_2,My_2,Mz_2,time_2",
+		"UV_3,AL_3,Mx_3,My_3,Mz_3,time_3",
+		"UV_4,AL_4,Mx_4,My_4,Mz_4,time_4",
+		"lon_deg,lon_min,lon_sec,lat_deg,lat_min,lat_sec,alt,time_GPS",
+		"O3,alt_bt");
 #endif
-
 }
 
 void loop()
@@ -63,7 +62,7 @@ void loop()
 	while (rfm96.available())
 	{
 #if DEBUG_MODE
-    LOG("Time elapsed since the last received package or 10 second count is %lu ms", millis() - time_counter);
+		LOG("Time elapsed since the last received package or 10 second count is %lu ms", millis() - time_counter);
 #endif
 		time_counter = millis();
 
@@ -72,43 +71,42 @@ void loop()
 		for (int i = 0; i < 4; i++)
 		{
 			uvFrame *uv_frame = (uvFrame *)local_cursor;
-      uv_frames[i] = *uv_frame;
+			uv_frames[i] = *uv_frame;
 #if DEBUG_MODE
-      LOG("Sensor %d received:\n\t %d UV counts\n\t %d AL counts\n\t (%d %d %d) normalised magnetometer vector\n\t %d [ms] time\n Long value equal to %llu",
-					i, uv_frame->uv, uv_frame->al, uv_frame->mx, uv_frame->my, uv_frame->mz, uv_frame->time, *(unsigned long long *)uv_frame);
+			LOG("Sensor %d received:\n\t %d UV counts\n\t %d AL counts\n\t (%d %d %d) normalised magnetometer vector\n\t %d [ms] time\n Long value equal to %llu",
+				i, uv_frame->uv, uv_frame->al, uv_frame->mx, uv_frame->my, uv_frame->mz, uv_frame->time, *(unsigned long long *)uv_frame);
 #endif
 			local_cursor += 8;
 		}
 		uint16_t o3 = *((uint16_t *)(&package[32]));
 		float do3 = o3;
 		do3 = do3 * O3_MAX / 0xFFFF;
-    fO3 = do3;
+		fO3 = do3;
 #if DEBUG_MODE
 		LOG("Ozone sensor registered %f ppm O3", do3);
 #endif
 		gps_frame = *(gpsFrame *)(package + 34);
 #if DEBUG_MODE
 		LOG("GPS registered latitude of %d %d' %d'', longitude of %d %d' %d'', altitude of %d and time of %d",
-				gps_frame.lat / 3600, (gps_frame.lat / 60) % 60, gps_frame.lat % 60,
-				gps_frame.lon / 3600, (gps_frame.lon / 60) % 60, gps_frame.lon % 60,
-				gps_frame.alt, gps_frame.time);
+			gps_frame.lat / 3600, (gps_frame.lat / 60) % 60, gps_frame.lat % 60,
+			gps_frame.lon / 3600, (gps_frame.lon / 60) % 60, gps_frame.lon % 60,
+			gps_frame.alt, gps_frame.time);
 #endif
 		uint16_t barometric_altitude = *(uint16_t *)(package + 42);
-    altitude = barometric_altitude;
+		altitude = barometric_altitude;
 #if DEBUG_MODE
 		LOG("Barometric altitude was calculated to be %lu", barometric_altitude);
 #endif
 
 #if !DEBUG_MODE
-    LOG("%lu,%lu,%f,%f,%f,%lu,%lu,%lu,%f,%f,%f,%lu,%lu,%lu,%f,%f,%f,%lu,%lu,%lu,%f,%f,%f,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%f,%lu",
-    uv_frames[0].uv, uv_frames[0].al, uv_frames[0].mx / 127.0, uv_frames[0].my / 127.0, uv_frames[0].mz / 127.0, uv_frames[0].time,
-    uv_frames[1].uv, uv_frames[1].al, uv_frames[1].mx / 127.0, uv_frames[1].my / 127.0, uv_frames[1].mz / 127.0, uv_frames[1].time,
-    uv_frames[2].uv, uv_frames[2].al, uv_frames[2].mx / 127.0, uv_frames[2].my / 127.0, uv_frames[2].mz / 127.0, uv_frames[2].time,
-    uv_frames[3].uv, uv_frames[3].al, uv_frames[3].mx / 127.0, uv_frames[3].my / 127.0, uv_frames[3].mz / 127.0, uv_frames[3].time,
-    gps_frame.lon / 3600, gps_frame.lon / 60 % 60, gps_frame.lon % 60, gps_frame.lat % 3600, gps_frame.lat / 60 % 60, gps_frame.lat % 60, gps_frame.alt, gps_frame.time,
-    fO3, altitude);
+		LOG("%lu,%lu,%f,%f,%f,%lu,%lu,%lu,%f,%f,%f,%lu,%lu,%lu,%f,%f,%f,%lu,%lu,%lu,%f,%f,%f,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%f,%lu",
+			uv_frames[0].uv, uv_frames[0].al, uv_frames[0].mx / 127.0, uv_frames[0].my / 127.0, uv_frames[0].mz / 127.0, uv_frames[0].time,
+			uv_frames[1].uv, uv_frames[1].al, uv_frames[1].mx / 127.0, uv_frames[1].my / 127.0, uv_frames[1].mz / 127.0, uv_frames[1].time,
+			uv_frames[2].uv, uv_frames[2].al, uv_frames[2].mx / 127.0, uv_frames[2].my / 127.0, uv_frames[2].mz / 127.0, uv_frames[2].time,
+			uv_frames[3].uv, uv_frames[3].al, uv_frames[3].mx / 127.0, uv_frames[3].my / 127.0, uv_frames[3].mz / 127.0, uv_frames[3].time,
+			gps_frame.lon / 3600, gps_frame.lon / 60 % 60, gps_frame.lon % 60, gps_frame.lat % 3600, gps_frame.lat / 60 % 60, gps_frame.lat % 60, gps_frame.alt, gps_frame.time,
+			fO3, altitude);
 #endif
-
 	}
 #if DEBUG_MODE
 	if (millis() - time_counter > 10000)

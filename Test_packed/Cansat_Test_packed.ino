@@ -263,7 +263,6 @@ void readUVFrames()
         LOG("Single UV frame reading time was %lu ms", reading_time);
         LOG("UV frame number %d of value [%d %d %d %d %d %d %d %d] sent",
             i, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
-        LOG("Unsigned long value of the frame is %llu", *(unsigned long long *)data);
 #endif
         buffer_count += rfm96.writeToBuffer(data, 8);
     }
@@ -379,7 +378,7 @@ void readUVFrame(int sensor_id)
     ltr.setMode(LTR390_MODE_ALS);
     while (!ltr.newDataAvailable())
         ;
-    al = ltr.readALS() >> 8;
+    al = ltr.readALS() >> 6;
     uv_frame.al = (uint8_t)al;
 #endif
 #if IMU_FLAG
@@ -489,7 +488,6 @@ void readGPSData()
             // reading_time = millis() - reading_time;
             // LOG("Single GPS frame reading time was %lu ms", reading_time);
             LOG("GPS frame of value [%d %d %d %d] sent", gps_frame.lat, gps_frame.lon, gps_frame.alt, gps_frame.time);
-            LOG("Unsigned long value of the frame is %llu", *(unsigned long long *)(&gps_frame));
 #endif
         }
     }
