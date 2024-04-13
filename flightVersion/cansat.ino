@@ -253,16 +253,16 @@ void readUVFrame(int sensor_id)
 
 uint16_t extractAngular(const char *s)
 {
-    char hour[3] = {0};
+    char degree[4] = {0};
     char minute[10] = {0};
     int minlen = strlen(s) - 2;
     double dec = 0;
     char *dot;
     if ((dot = strchr(s, '.')))
     {
-        strncpy(hour, s, 2);
-        strncpy(minute, s + 2, minlen);
-        dec = atof(hour) * 3600 + atof(minute) * 60;
+        strncpy(degree, s, dot - s - 2);
+        strncpy(minute, dot - 2, minlen);
+        dec = atof(degree) * 3600 + atof(minute) * 60;
     }
     return (uint16_t)dec;
 }
@@ -297,7 +297,6 @@ void readGPSData()
             tokens[index++] = gpsData.substring(from, to);
             from = to + 1;
         }
-
         gps_frame.lat = extractAngular(tokens[2].c_str());
         gps_frame.lon = extractAngular(tokens[4].c_str());
         gps_frame.alt = (uint16_t)atof(tokens[9].c_str());
