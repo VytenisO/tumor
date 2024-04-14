@@ -210,8 +210,8 @@ void readBarometricAltitudeFrame()
 
 // Read UV sensor frame in the form of [UV UV AL Mx My Mz time time]
 // Full UV counts - up to 8753 counts expected, possible variation by about 150 counts (could be done in 8 bits)
-// Ambient light counts divided by ALS_MAX, cut down to one byte
-// Magnetic field readouts normalised to the magnitude, multiplied by 127 and offset by 128, in x-, y- and z-axes,
+// Ambient light cut down to one byte
+// Magnetic field readouts normalised to the magnitude, multiplied by 127, in x-, y- and z-axes,
 // Time in milliseconds cut down to two least significant bytes
 void readUVFrame(int sensor_id)
 {
@@ -297,9 +297,9 @@ void readGPSData()
             tokens[index++] = gpsData.substring(from, to);
             from = to + 1;
         }
-        gps_frame.lat = extractAngular(tokens[2].c_str());
-        gps_frame.lon = extractAngular(tokens[4].c_str());
-        gps_frame.alt = (uint16_t)atof(tokens[9].c_str());
+        gps_frame.lat = extractAngular(tokens[2].c_str()); // arcseconds clipped to 65536
+        gps_frame.lon = extractAngular(tokens[4].c_str()); // arcseconds clipped to 65536
+        gps_frame.alt = (uint16_t)atof(tokens[9].c_str()); // meters above sea level
         gps_frame.time = (uint16_t)(timeToSeconds(tokens[1].c_str()));
     }
 
