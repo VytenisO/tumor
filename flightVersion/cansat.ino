@@ -149,7 +149,8 @@ void setup()
 
 void loop()
 {
-    static unsigned long lastTransmitTime = 0;
+    // transmit right away
+    static unsigned long lastTransmitTime = millis() - TRANSMISSION_INTERVAL;
 
     // Check if it's time to transmit sensor data
     if (millis() - lastTransmitTime >= TRANSMISSION_INTERVAL)
