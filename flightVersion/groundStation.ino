@@ -30,13 +30,18 @@ void loop()
     {
         readPackage();
         uint32_t lat = full_frame.gps.lat + 65536 * 3;
-        LOG("%u,%u,%f,%f,%f,%u,%u,%u,%f,%f,%f,%u,%u,%u,%f,%f,%f,%u,%u,%u,%f,%f,%f,%u,%u,%u,%u,%lu,%lu,%lu,%u,%u,%f,%u",
-            full_frame.uv[0].uv, full_frame.uv[0].al, full_frame.uv[0].mx / 127.0, full_frame.uv[0].my / 127.0, full_frame.uv[0].mz / 127.0, full_frame.uv[0].time,
-            full_frame.uv[1].uv, full_frame.uv[1].al, full_frame.uv[1].mx / 127.0, full_frame.uv[1].my / 127.0, full_frame.uv[1].mz / 127.0, full_frame.uv[1].time,
-            full_frame.uv[2].uv, full_frame.uv[2].al, full_frame.uv[2].mx / 127.0, full_frame.uv[2].my / 127.0, full_frame.uv[2].mz / 127.0, full_frame.uv[2].time,
-            full_frame.uv[3].uv, full_frame.uv[3].al, full_frame.uv[3].mx / 127.0, full_frame.uv[3].my / 127.0, full_frame.uv[3].mz / 127.0, full_frame.uv[3].time,
-            full_frame.gps.lon / 3600, full_frame.gps.lon / 60 % 60, full_frame.gps.lon % 60, lat / 3600, lat / 60 % 60, lat % 60, full_frame.gps.alt, full_frame.gps.time,
-            ((float)full_frame.o3) * O3_MAX / 0xFFFF, full_frame.altitude);
+        char str[256];
+        for (int i = 0; i < N_UV; i++)
+        {
+            uvFrame uv = full_frame.uv[i];
+            sprintf(str, "%u,%u,%f,%f,%f,%u", uv.uv, uv.al, uv.mx / 127.0, uv.my / 127.0, uv.mz / 127.0, uv.time);
+            Serial.print(str);
+        }
+        sprintf(str, "%u,%u,%u,%lu,%lu,%lu,%u,%u,%f,%u",
+                full_frame.gps.lon / 3600, full_frame.gps.lon / 60 % 60, full_frame.gps.lon % 60,
+                lat / 3600, lat / 60 % 60, lat % 60, full_frame.gps.alt, full_frame.gps.time,
+                ((float)full_frame.o3) * O3_MAX / 0xFFFF, full_frame.altitude);
+        Serial.println(str);
     }
 }
 

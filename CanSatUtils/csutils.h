@@ -29,9 +29,9 @@ struct uvFrame
 {
     uint16_t uv;
     uint8_t al;
-    uint8_t mx;
-    uint8_t my;
-    uint8_t mz;
+    int8_t mx;
+    int8_t my;
+    int8_t mz;
     uint16_t time;
 };
 
@@ -64,7 +64,7 @@ struct gpsFrame
 // B42 B43 - barometric altitude
 struct fullFrame
 {
-    uvFrame uv[4];
+    uvFrame uv[N_UV];
     gpsFrame gps;
     uint16_t o3;
     uint16_t altitude;
