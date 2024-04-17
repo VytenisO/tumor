@@ -60,13 +60,13 @@ struct gpsFrame
 // For N = 4 these values are respectively:
 // B0 - B31 - uv frames
 // B32 - B39 - gps frame
-// B40 B41 - O3
-// B42 B43 - barometric altitude
+// B40 - temperature
+// B41 B42 - barometric altitude
 struct fullFrame
 {
     uvFrame uv[N_UV];
     gpsFrame gps;
-    uint16_t o3;
+    int8_t temperature;
     uint16_t altitude;
 };
 

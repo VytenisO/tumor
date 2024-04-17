@@ -10,6 +10,8 @@
 
 #define TCAADDR 0x70
 
+#define DEBUG 0
+
 #define GPS_SERIAL Serial1
 #define GPS_BAUDRATE 9600
 
@@ -160,10 +162,22 @@ void loop()
         lastTransmitTime = millis(); // Update the last transmit time
         // fetch data right after sending previous frame
         readUVFrames();
-        readO3Frame();
         readGPSData();
         readBarometricAltitudeFrame();
         rfm96.writeToBuffer((uint8_t *)&full_frame, sizeof(fullFrame));
+
+#if DEBUG
+        LOG("\n\n");
+        for (int i = 0; i < N_UV; i++)
+        {
+            uvFrame uv_frame = full_frame.uv[i];
+            LOG("uv_%d: %u al_%d: %u Mx_%d: %d My_%d: %d Mz_%d: %d time_%d: %u",
+                i, uv_frame.uv, i, uv_frame.al, i, uv_frame.mx, i, uv_frame.my, i, uv_frame.mz, i, uv_frame.time);
+        }
+        gpsFrame gps_frame = full_frame.gps;
+        LOG("lon: %u lat: %u alt: %u time: %u", gps_frame.lon, gps_frame.lat, gps_frame.alt, gps_frame.time);
+        LOG("barometric altitude: %u temperature: %d", full_frame.altitude, full_frame.temperature);
+#endif
     }
 }
 
@@ -175,22 +189,11 @@ void readUVFrames()
     }
 }
 
-void readO3Frame()
-{
-    float gasValue = analogRead(Vgas) * (3.3 / 4095.0);
-    float refValue = (analogRead(Vref) * (3.3 / 4095.0));
-
-    // calculate  ozone concentration using the  gas and reference values
-    float Cx = 1 / M * (gasValue - refValue);
-    Cx /= O3_MAX;
-    full_frame.o3 = (uint16_t)(Cx * 0xFFFF);
-}
-
 // This function reads the Cansat temperature in centigrades. It
 // uses the Steinhart-Hart equation
-double read_temp_direct()
+float read_temp_direct()
 {
-    double R_NTC, log_NTC;
+    float R_NTC, log_NTC;
     uint16_t ARead = analogRead(22);
     R_NTC = 4700 * ARead / (4095.0 - ARead);
     log_NTC = log(R_NTC / 10000);
@@ -207,6 +210,8 @@ void readBarometricAltitudeFrame()
     float p = gy91.readPressure(); // gets pressure in pascal
     float h = (T_1 / alpha) * (pow((p / p_1), (-alpha * R) / g_0) - 1);
     full_frame.altitude = (uint16_t)h;
+    // -70 -> -100, 30 -> 100
+    full_frame.temperature = (int8_t)(read_temp_direct() * 2 + 40 );
 }
 
 // Read UV sensor frame in the form of [UV UV AL Mx My Mz time time]
@@ -229,6 +234,10 @@ void readUVFrame(int sensor_id)
         mz += gy91.mz;
     }
     tcaselect(sensor_id);
+
+#if MAGNETOMETER_SAMPLES < 25
+    delay(25 - MAGNETOMETER_SAMPLES);
+#endif
     while (!ltr.newDataAvailable())
         ;
     uv_frame.uv = (uint16_t)ltr.readUVS();

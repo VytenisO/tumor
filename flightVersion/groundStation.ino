@@ -15,13 +15,6 @@ void setup()
         ;
 
     char str[256];
-    Serial.print("\n\n\n");
-    for (int i = 0; i < N_UV; i++)
-    {
-        sprintf(str, "UV_%d,AL_%d,Mx_%d,My_%d,Mz_%d,time_%d,", i, i, i, i, i, i);
-        Serial.print(str);
-    }
-    Serial.println("lon_deg,lon_min,lon_sec,lat_deg,lat_min,lat_sec,alt,time_GPS,O3,alt_bt");
 }
 
 void loop()
@@ -34,13 +27,13 @@ void loop()
         for (int i = 0; i < N_UV; i++)
         {
             uvFrame uv = full_frame.uv[i];
-            sprintf(str, "%u,%u,%f,%f,%f,%u", uv.uv, uv.al, uv.mx / 127.0, uv.my / 127.0, uv.mz / 127.0, uv.time);
+            sprintf(str, "%u,%u,%f,%f,%f,%u,", uv.uv, uv.al, uv.mx / 127.0, uv.my / 127.0, uv.mz / 127.0, uv.time);
             Serial.print(str);
         }
         sprintf(str, "%u,%u,%u,%lu,%lu,%lu,%u,%u,%f,%u",
                 full_frame.gps.lon / 3600, full_frame.gps.lon / 60 % 60, full_frame.gps.lon % 60,
                 lat / 3600, lat / 60 % 60, lat % 60, full_frame.gps.alt, full_frame.gps.time,
-                ((float)full_frame.o3) * O3_MAX / 0xFFFF, full_frame.altitude);
+                full_frame.temperature * 0.5 - 20, full_frame.altitude);
         Serial.println(str);
     }
 }
