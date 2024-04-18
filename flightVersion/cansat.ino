@@ -17,6 +17,13 @@
 
 // How many times is magnetometric data sampled to estimate average
 #define MAGNETOMETER_SAMPLES 10
+#define MX_OFFSET 12
+#define MY_OFFSET 49
+#define MZ_OFFSET -345
+#define MX_SCALE 90
+#define MY_SCALE 80
+#define MZ_SCALE 90
+
 
 #define TRANSMISSION_INTERVAL 2100
 
@@ -229,9 +236,9 @@ void readUVFrame(int sensor_id)
     for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
     {
         gy91.read_mag();
-        mx += gy91.mx;
-        my += gy91.my;
-        mz += gy91.mz;
+        mx += (gy91.mx - MX_OFFSET) / MX_SCALE;
+        my += (gy91.my - MY_OFFSET) / MY_SCALE;
+        mz += (gy91.mz - MZ_OFFSET) / MZ_SCALE;
     }
     tcaselect(sensor_id);
 
@@ -248,13 +255,14 @@ void readUVFrame(int sensor_id)
     for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
     {
         gy91.read_mag();
-        mx += gy91.mx;
-        my += gy91.my;
-        mz += gy91.mz;
+        mx += (gy91.mx - MX_OFFSET) / MX_SCALE;
+        my += (gy91.my - MY_OFFSET) / MY_SCALE;
+        mz += (gy91.mz - MZ_OFFSET) / MZ_SCALE;
     }
     double magnitude = sqrt(mx * mx + my * my + mz * mz);
     if (magnitude < 0.001)
         magnitude = 0.001;
+    LOG("Magnetic field registered is: %f %f %f", mx, my, mz);
     uv_frame.mx = (int8_t)(mx * 127 / magnitude);
     uv_frame.my = (int8_t)(my * 127 / magnitude);
     uv_frame.mz = (int8_t)(mz * 127 / magnitude);

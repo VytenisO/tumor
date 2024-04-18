@@ -13,8 +13,6 @@ void setup()
         ;
     while (!rfm96.init())
         ;
-
-    char str[256];
 }
 
 void loop()
