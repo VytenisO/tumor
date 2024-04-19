@@ -142,7 +142,7 @@ void setup()
         Serial.println("Init of radio failed, stopping");
     }
     Serial.println("Found RFM96 radio, and it is working as expected");
-    rfm96.setTxPower(5); // +5 dBm, approx 3 mW, which is quite low
+    rfm96.setTxPower(10); // +10 dBm, 10mW, maximum allowed
 
     Wire1.begin();
 
