@@ -173,18 +173,6 @@ void loop()
         readBarometricAltitudeFrame();
         rfm96.writeToBuffer((uint8_t *)&full_frame, sizeof(fullFrame));
 
-#if DEBUG
-        LOG("\n\n");
-        for (int i = 0; i < N_UV; i++)
-        {
-            uvFrame uv_frame = full_frame.uv[i];
-            LOG("uv_%d: %u al_%d: %u Mx_%d: %d My_%d: %d Mz_%d: %d time_%d: %u",
-                i, uv_frame.uv, i, uv_frame.al, i, uv_frame.mx, i, uv_frame.my, i, uv_frame.mz, i, uv_frame.time);
-        }
-        gpsFrame gps_frame = full_frame.gps;
-        LOG("lon: %u lat: %u alt: %u time: %u", gps_frame.lon, gps_frame.lat, gps_frame.alt, gps_frame.time);
-        LOG("barometric altitude: %u temperature: %d", full_frame.altitude, full_frame.temperature);
-#endif
     }
 }
 
@@ -229,6 +217,7 @@ void readBarometricAltitudeFrame()
 void readUVFrame(int sensor_id)
 {
     // Has to be some time before reading values. Otherwise we get zeros :/
+    ltr.setGain(LTR390_GAIN_18);
     ltr.setMode(LTR390_MODE_UVS);
     float mx = 0, my = 0, mz = 0;
     uvFrame uv_frame;
@@ -248,10 +237,11 @@ void readUVFrame(int sensor_id)
     while (!ltr.newDataAvailable())
         ;
     uv_frame.uv = (uint16_t)ltr.readUVS();
+    ltr.setGain(LTR390_GAIN_1);
     ltr.setMode(LTR390_MODE_ALS);
     while (!ltr.newDataAvailable())
         ;
-    uv_frame.al = (uint8_t)(ltr.readALS() >> 8);
+    uv_frame.al = (uint8_t)(log10(ltr.readALS() + 1000) * 139 - 417);
     for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
     {
         gy91.read_mag();
@@ -262,7 +252,6 @@ void readUVFrame(int sensor_id)
     double magnitude = sqrt(mx * mx + my * my + mz * mz);
     if (magnitude < 0.001)
         magnitude = 0.001;
-    LOG("Magnetic field registered is: %f %f %f", mx, my, mz);
     uv_frame.mx = (int8_t)(mx * 127 / magnitude);
     uv_frame.my = (int8_t)(my * 127 / magnitude);
     uv_frame.mz = (int8_t)(mz * 127 / magnitude);
