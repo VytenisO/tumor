@@ -17,13 +17,13 @@
 
 // How many times is magnetometric data sampled to estimate average
 #define MAGNETOMETER_SAMPLES 10
+#define UV_INTEGRATION_TIME 26
 #define MX_OFFSET 12
 #define MY_OFFSET 49
 #define MZ_OFFSET -345
 #define MX_SCALE 90
 #define MY_SCALE 80
 #define MZ_SCALE 90
-
 
 #define TRANSMISSION_INTERVAL 2100
 
@@ -49,6 +49,9 @@ fullFrame full_frame;
 
 uint8_t buffer_count;
 
+// healthchecks
+uint8_t gy91_working, uv_working[N_UV];
+
 void tcaselect(uint8_t i)
 {
     if (i > 7)
@@ -63,12 +66,16 @@ void turn_on_UV(uint8_t port)
 {
     tcaselect(port);
 
-    while (!ltr.begin(&Wire1))
+    uv_working[port] = ltr.begin(&Wire1);
+    if (uv_working[port])
     {
-        delay(100);
-        LOG("UV %u not connected", port);
+        LOG("UV %u port ok", port);
     }
-    LOG("UV %u port ok", port);
+    else
+    {
+        LOG("UV %u not connected", port);
+        return;
+    }
 
     ltr.setGain(LTR390_GAIN_18);
     uint8_t gain = 0;
@@ -131,11 +138,15 @@ void setup()
     analogWriteResolution(16);
     analogReadResolution(12);
 
-    while (!gy91.init())
+    gy91_working = gy91.init();
+    if (gy91_working)
+    {
+        Serial.println("Found gy91 module, and it is working as expected");
+    }
+    else
     {
         Serial.println("Could not initiate gy91");
     }
-    Serial.println("Found gy91 module, and it is working as expected");
 
     while (!rfm96.init())
     {
@@ -172,7 +183,6 @@ void loop()
         readGPSData();
         readBarometricAltitudeFrame();
         rfm96.writeToBuffer((uint8_t *)&full_frame, sizeof(fullFrame));
-
     }
 }
 
@@ -180,7 +190,10 @@ void readUVFrames()
 {
     for (int i = 0; i < N_UV; i++)
     {
-        readUVFrame(i);
+        if (uv_working[i])
+        {
+            readUVFrame(i);
+        }
     }
 }
 
@@ -206,7 +219,7 @@ void readBarometricAltitudeFrame()
     float h = (T_1 / alpha) * (pow((p / p_1), (-alpha * R) / g_0) - 1);
     full_frame.altitude = (uint16_t)h;
     // -70 -> -100, 30 -> 100
-    full_frame.temperature = (int8_t)(read_temp_direct() * 2 + 40 );
+    full_frame.temperature = (int8_t)(read_temp_direct() * 2 + 40);
 }
 
 // Read UV sensor frame in the form of [UV UV AL Mx My Mz time time]
@@ -219,22 +232,23 @@ void readUVFrame(int sensor_id)
     // Has to be some time before reading values. Otherwise we get zeros :/
     ltr.setGain(LTR390_GAIN_18);
     ltr.setMode(LTR390_MODE_UVS);
+    unsigned long integration_time = millis();
     float mx = 0, my = 0, mz = 0;
     uvFrame uv_frame;
     uv_frame.time = (uint16_t)millis();
-    for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
+    if (gy91_working)
     {
-        gy91.read_mag();
-        mx += (gy91.mx - MX_OFFSET) / MX_SCALE;
-        my += (gy91.my - MY_OFFSET) / MY_SCALE;
-        mz += (gy91.mz - MZ_OFFSET) / MZ_SCALE;
+        for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
+        {
+            gy91.read_mag();
+            mx += (gy91.mx - MX_OFFSET) / MX_SCALE;
+            my += (gy91.my - MY_OFFSET) / MY_SCALE;
+            mz += (gy91.mz - MZ_OFFSET) / MZ_SCALE;
+        }
     }
     tcaselect(sensor_id);
 
-#if MAGNETOMETER_SAMPLES < 25
-    delay(25 - MAGNETOMETER_SAMPLES);
-#endif
-    while (!ltr.newDataAvailable())
+    while (millis() - UV_INTEGRATION_TIME < integration_time && !ltr.newDataAvailable())
         ;
     uv_frame.uv = (uint16_t)ltr.readUVS();
     ltr.setGain(LTR390_GAIN_1);
@@ -242,13 +256,17 @@ void readUVFrame(int sensor_id)
     while (!ltr.newDataAvailable())
         ;
     uv_frame.al = (uint8_t)(log10(ltr.readALS() + 1000) * 139 - 417);
-    for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
+    if (gy91_working)
     {
-        gy91.read_mag();
-        mx += (gy91.mx - MX_OFFSET) / MX_SCALE;
-        my += (gy91.my - MY_OFFSET) / MY_SCALE;
-        mz += (gy91.mz - MZ_OFFSET) / MZ_SCALE;
+        for (int i = 0; i < MAGNETOMETER_SAMPLES; i++)
+        {
+            gy91.read_mag();
+            mx += (gy91.mx - MX_OFFSET) / MX_SCALE;
+            my += (gy91.my - MY_OFFSET) / MY_SCALE;
+            mz += (gy91.mz - MZ_OFFSET) / MZ_SCALE;
+        }
     }
+
     double magnitude = sqrt(mx * mx + my * my + mz * mz);
     if (magnitude < 0.001)
         magnitude = 0.001;
