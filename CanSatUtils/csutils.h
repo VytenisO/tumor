@@ -61,13 +61,13 @@ struct gpsFrame
 // B0 - B31 - uv frames
 // B32 - B39 - gps frame
 // B40 - temperature
-// B41 B42 - barometric altitude
+// B41 B42 - pressure
 struct fullFrame
 {
     uvFrame uv[N_UV];
     gpsFrame gps;
     int8_t temperature;
-    uint16_t altitude;
+    uint16_t pressure;
 };
 
 #endif

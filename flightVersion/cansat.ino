@@ -181,7 +181,7 @@ void loop()
         // fetch data right after sending previous frame
         readUVFrames();
         readGPSData();
-        readBarometricAltitudeFrame();
+        readPressureTemperature();
         rfm96.writeToBuffer((uint8_t *)&full_frame, sizeof(fullFrame));
     }
 }
@@ -210,14 +210,10 @@ float read_temp_direct()
     return 1 / (3.354016E-3 + 2.569850E-4 * log_NTC + 2.620131E-6 * log_NTC * log_NTC + 6.383091E-8 * log_NTC * log_NTC * log_NTC) - 273.15;
 }
 
-void readBarometricAltitudeFrame()
+void readPressureTemperature()
 {
-    // Define starting values
-    float T_1 = 288.15;            // Standard temperature at sea level in Kelvin (15°C)
-    float p_1 = 101325;            // Standard pressure at sea level in Pascal (1013.25 hPa)
-    float p = gy91.readPressure(); // gets pressure in pascal
-    float h = (T_1 / alpha) * (pow((p / p_1), (-alpha * R) / g_0) - 1);
-    full_frame.altitude = (uint16_t)h;
+    float p = log(gy91.readPressure() * 5603 + 1);
+    full_frame.pressure = (uint16_t)p;
     // -70 -> -100, 30 -> 100
     full_frame.temperature = (int8_t)(read_temp_direct() * 2 + 40);
 }

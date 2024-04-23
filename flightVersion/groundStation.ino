@@ -22,6 +22,7 @@ void loop()
     {
         readPackage();
         uint32_t lat = full_frame.gps.lat + 65536 * 3;
+        unsigned int p = (uint32_t)exp((full_frame.pressure - 1) / 5603.0);
         char str[256];
         for (int i = 0; i < N_UV; i++)
         {
@@ -33,7 +34,7 @@ void loop()
         sprintf(str, "%u,%u,%u,%lu,%lu,%lu,%u,%u,%f,%u,%d",
                 full_frame.gps.lon / 3600, full_frame.gps.lon / 60 % 60, full_frame.gps.lon % 60,
                 lat / 3600, lat / 60 % 60, lat % 60, full_frame.gps.alt, full_frame.gps.time,
-                full_frame.temperature * 0.5 - 20, full_frame.altitude,rfm96.last_RSSI());
+                full_frame.temperature * 0.5 - 20, p,rfm96.last_RSSI());
         Serial.println(str);
     }
 }
