@@ -18,11 +18,11 @@
 // How many times is magnetometric data sampled to estimate average
 #define MAGNETOMETER_SAMPLES 10
 #define UV_INTEGRATION_TIME 26
-#define MX_OFFSET 12
-#define MY_OFFSET 49
-#define MZ_OFFSET -345
+#define MX_OFFSET -40
+#define MY_OFFSET 7
+#define MZ_OFFSET -367
 #define MX_SCALE 90
-#define MY_SCALE 80
+#define MY_SCALE 90
 #define MZ_SCALE 90
 
 #define TRANSMISSION_INTERVAL 2100
