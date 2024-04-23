@@ -6,6 +6,7 @@
 #include "Wire.h"
 #include "Adafruit_LTR390.h"
 #include "csutils.h"
+#include "pitches.h"
 #include <stdio.h>
 
 #define TCAADDR 0x70
@@ -27,9 +28,72 @@
 
 #define TRANSMISSION_INTERVAL 2100
 
+#define BUZZER_PIN 29
+
 #define g_0 9.81      // Gravitational acceleration (m/s^2)
 #define R 287.06      // Specific gas constant (J/kg⋅K)
 #define alpha -0.0065 // Temperature gradient (K/m)
+
+int melody[] = {
+    NOTE_E5, NOTE_B4, NOTE_C5, NOTE_D5, NOTE_C5, NOTE_B4,
+    NOTE_A4, NOTE_A4, NOTE_C5, NOTE_E5, NOTE_D5, NOTE_C5,
+    NOTE_B4, NOTE_C5, NOTE_D5, NOTE_E5,
+    NOTE_C5, NOTE_A4, NOTE_A4, NOTE_A4, NOTE_B4, NOTE_C5,
+
+    NOTE_D5, NOTE_F5, NOTE_A5, NOTE_G5, NOTE_F5,
+    NOTE_E5, NOTE_C5, NOTE_E5, NOTE_D5, NOTE_C5,
+    NOTE_B4, NOTE_B4, NOTE_C5, NOTE_D5, NOTE_E5,
+    NOTE_C5, NOTE_A4, NOTE_A4, REST,
+
+    NOTE_E5, NOTE_B4, NOTE_C5, NOTE_D5, NOTE_C5, NOTE_B4,
+    NOTE_A4, NOTE_A4, NOTE_C5, NOTE_E5, NOTE_D5, NOTE_C5,
+    NOTE_B4, NOTE_C5, NOTE_D5, NOTE_E5,
+    NOTE_C5, NOTE_A4, NOTE_A4, NOTE_A4, NOTE_B4, NOTE_C5,
+
+    NOTE_D5, NOTE_F5, NOTE_A5, NOTE_G5, NOTE_F5,
+    NOTE_E5, NOTE_C5, NOTE_E5, NOTE_D5, NOTE_C5,
+    NOTE_B4, NOTE_B4, NOTE_C5, NOTE_D5, NOTE_E5,
+    NOTE_C5, NOTE_A4, NOTE_A4, REST,
+
+    NOTE_E5, NOTE_C5,
+    NOTE_D5, NOTE_B4,
+    NOTE_C5, NOTE_A4,
+    NOTE_GS4, NOTE_B4, REST,
+    NOTE_E5, NOTE_C5,
+    NOTE_D5, NOTE_B4,
+    NOTE_C5, NOTE_E5, NOTE_A5,
+    NOTE_GS5};
+
+int durations[] = {
+    4, 8, 8, 4, 8, 8,
+    4, 8, 8, 4, 8, 8,
+    4, 8, 4, 4,
+    4, 4, 8, 4, 8, 8,
+
+    4, 8, 4, 8, 8,
+    4, 8, 4, 8, 8,
+    4, 8, 8, 4, 4,
+    4, 4, 4, 4,
+
+    4, 8, 8, 4, 8, 8,
+    4, 8, 8, 4, 8, 8,
+    4, 8, 4, 4,
+    4, 4, 8, 4, 8, 8,
+
+    4, 8, 4, 8, 8,
+    4, 8, 4, 8, 8,
+    4, 8, 8, 4, 4,
+    4, 4, 4, 4,
+
+    2, 2,
+    2, 2,
+    2, 2,
+    2, 4, 8,
+    2, 2,
+    2, 2,
+    4, 4, 2,
+    2};
+
 // Sensor calibration factor
 // sensitivity code (nA/ppm) * TIA gain (ozone = 499 kV/A) * 10**-9 (A/nA) * 10**3 (V/kV)
 // scan the sensor for the code
@@ -51,6 +115,38 @@ uint8_t buffer_count;
 
 // healthchecks
 uint8_t gy91_working, uv_working[N_UV];
+
+void playTune()
+{
+    int size = sizeof(durations) / sizeof(int);
+
+    for (int note = 0; note < size; note++)
+    {
+        // to calculate the note duration, take one second divided by the note type.
+        // e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+        int duration = 1000 / durations[note];
+        tone(BUZZER_PIN, melody[note], duration);
+
+        // to distinguish the notes, set a minimum time between them.
+        // the note's duration + 30% seems to work well:
+        int pauseBetweenNotes = duration * 1.3;
+        delay(pauseBetweenNotes);
+
+        // stop the tone playing:
+        noTone(BUZZER_PIN);
+    }
+}
+
+void beep(int times)
+{
+    for (int i = 0; i < times; i++)
+    {
+        analogWrite(BUZZER_PIN, 50000);
+        delay(200);
+        analogWrite(BUZZER_PIN, 0);
+        delay(200); // A small pause between beeps
+    }
+}
 
 void tcaselect(uint8_t i)
 {
@@ -133,6 +229,10 @@ void setup()
     Serial.begin(9600);
     Serial.println("Starting setup of cansat...");
 
+    digitalWriteFast(BUZZER_PIN, LOW);
+
+    pinMode(BUZZER_PIN, OUTPUT);
+
     GPS_SERIAL.begin(GPS_BAUDRATE);
 
     analogWriteResolution(16);
@@ -165,6 +265,7 @@ void setup()
     }
     Serial.println("End of setup");
     Serial.println();
+    playTune();
 };
 
 void loop()
@@ -212,7 +313,7 @@ float read_temp_direct()
 
 void readPressureTemperature()
 {
-    float p = log(gy91.readPressure() * 5603 + 1);
+    float p = log(gy91.readPressure() + 1) * 5500;
     full_frame.pressure = (uint16_t)p;
     // -70 -> -100, 30 -> 100
     full_frame.temperature = (int8_t)(read_temp_direct() * 2 + 40);
