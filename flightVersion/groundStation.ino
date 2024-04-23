@@ -22,7 +22,7 @@ void loop()
     {
         readPackage();
         uint32_t lat = full_frame.gps.lat + 65536 * 3;
-        unsigned int p = (uint32_t)exp((full_frame.pressure - 1) / 5603.0);
+        uint32_t p = (uint32_t)(exp((float)full_frame.pressure / 5500.0) - 1);
         char str[256];
         for (int i = 0; i < N_UV; i++)
         {

@@ -1,0 +1,139 @@
+#
+#              ************************************
+#              *****    GLOBAL ATTRIBUTES    ******
+#              ************************************
+#
+#     TITLE                           TUMOR> Ultraviolet Balloon Probe Readings
+#     PROJECT                         TUMOR>Targeting Ultraviolet Mid-Ozone layer Radiation
+#                                     TEK5720>Space Systems Project>Blip-Blop
+#     DISCIPLINE                      Geoscience>Atmospheric Modelling
+#     DATA_TYPE                       2.1 second samples
+#     DATA_VERSION                    1
+#     GENERATED_BY                    Universitetet i Oslo
+#     GENERATION_DATE                 20240423
+#     LINK_TEXT                       Repository with the code and data
+#     LINK_TITLE                      TUMOR project repository
+#     HTTP_LINK                       https://github.com/VytenisO/tumor
+#     TEXT                            Data obtain from a balloon probe sent as a part of
+#                                     TEK5720 course at the University of Oslo
+#                                     Balloon was released from Andøya Space Center
+#                                     The probe consists of several auxilary sensors like
+#                                     GPS, IMU, thermometer and barometer, and four main sensors
+#                                     measuring ultraviolet and ambient light detected counts
+#                                     distributed evenly in the probe's horizontal plane
+#                                     reference:
+#                                     https://optoelectronics.liteon.com/upload/download/DS86-2015-0004/LTR-390UV_Final_%20DS_V1%201.pdf
+#     MODS                            Initial Release 17/04/24.
+#     LOGICAL_FILE_ID                 TUMOR_20240423_V1
+#     LOGICAL_SOURCE                  TUMOR
+#     LOGICAL_SOURCE_DESCRIPTION      TUMOR 2.1 second UV samples
+#     PI_NAME                         M. J. Odorczuk
+#     PI_AFFILIATION                  Universitetet i Oslo
+#     MISSION_GROUP                   Blip-Blop
+#     INSTRUMENT_TYPE                 Ultraviolet sensor
+#     TIME_RESOLUTION                 inconsistent, nominally 2.1 second
+#     ACKNOWLEDGEMENT                 Please acknowledge the course supervisor
+#                                     Anja Kohfeldt from the University of Oslo
+#                                     and the course advisor
+#                                     Elise Wright Knutsen from the University of Oslo
+#     RULES_OF_USE                    Free to use, source acknowledge required
+#
+#              ************************************
+#              ****  RECORD VARYING VARIABLES  ****
+#              ************************************
+#
+#  1. Ultraviolet frames 0, 1, 2 and 3
+#       1a. Ultraviolet counts on the sensor
+#           NOTES:  Reference: https://optoelectronics.liteon.com/upload/download/DS86-2015-0004/LTR-390UV_Final_%20DS_V1%201.pdf
+#                   Gain set to 18, resolution set to 16 bit, integration time is 25 ms
+#                   Values may range from 0 to 65535, expected no larger than 3000
+#       1b. Ambient light counts on the sensor
+#           NOTES:  Reference: https://optoelectronics.liteon.com/upload/download/DS86-2015-0004/LTR-390UV_Final_%20DS_V1%201.pdf
+#                   Gain set to 1, resolution set to 16 bit, integration time is 25 ms
+#                   Values may range from 0 to 65535
+#                   Counts are compressed with a formula log10(al_counts + 1000) * 139 - 417 and sent as an unsigned 8 bit integer
+#                   Counts are decompressed by the ground station
+#                   Decompression formula is 10^((received_counts + 417) / 139) - 1000
+#                   Decompressed values are stored as unisgned 16 bit integers
+#       1c. Magnetic field on the probe in x-direction, normalized to total magnitude equal to 1
+#       1d. Magnetic field on the probe in y-direction, normalized to total magnitude equal to 1
+#       1e. Magnetic field on the probe in z-direction, normalized to total magnitude equal to 1
+#           NOTES:  Magnetic field is an average of 10 samples measured right before 1a and another 10 samples after 1b
+#                   Values are interpolated as an average of all the samples
+#       1f. Timestamp at the beginning of the frame
+#           NOTES:  First 10 magnetometer samples are obtained up to 10ms from the timestamp
+#                   Ultraviolet counts are sampled in the window between 1 to 26ms from the timestamp
+#                   Ambient light counts are sampled in the window between 27 and 52ms from the timestamp
+#                   Last 10 magnetometer samples are obtained 62ms from the timestamp
+#                   Timestamp given in the format hh:mm:ss.sss
+#       NOTES: All the points 1a-1f are repeated four times for each sensor
+#  2. GPS frame
+#       2a. Longitude of the probe in degree east
+#       2b. Longitude of the probe in arcminutes east from the last full degree
+#       2c. Longitude of the probe in arcseconds east from the last full arcminute
+#       2d. Latitude of the probe in degree east
+#       2e. Latitude of the probe in arcminutes east from the last full degree
+#       2f. Latitude of the probe in arcseconds east from the last full arcminute
+#       2g. Altitude in meters above sea level
+#       2h. Timestamp of the GPS data frame
+#       NOTES:  Received GPS data is sent in clipped compressed values thus overflow errors can occur
+#               Overflow spherical coordinates error occurs for every 18°12'18''
+#               Overflow altitudinal error occurs for every 65 536 m
+#               Overflow temporal error occurs for every 18 hours, 12 minutes and 18 seconds
+#               Expected launch coordinates are 69°19' N, 16°7' E
+#               Expected launch time is 23-04-2024 between 12:45:00 - 15:00:00 UTC
+#               Expected altitude is from 0 to 30 000 m above sea level
+#  9. Barometric altitude
+#       NOTES:  In meters above sea level based on CanSat book from Andøya Space Education
+#               Reference: https://learn.andoyaspace.no/ebook/the-cansat-book/common/getting-started/using-the-sensors/altitude-calculations/
+#               Overflow altitudinal error occurs for every 65 536 m
+#               Expected altitude is from 0 to 30 000 m above sea level
+# 10. External temperature
+#       NOTES:  Given in degrees Celsius
+#               Overflow error occurs for every 128 degrees
+#               Values ranging from -84 to +43.5
+#               Expected temperature is from -70 to +30
+#               Resolution of 0.5 degree
+# 11. RSSI - Received Signal Strength Indicator
+#
+#              ******************************
+#              ****  SENSOR ORIENTATION  ****
+#              ******************************
+#
+# Before the release, sensor 0 was oriented towards the magnetic south. All the UV sensors are evenly distributed clockwise in the horizontal plane.
+# Azimuths are as follows:
+#       sensor 0 - 270.0°
+#       sensor 1 - 0.0°
+#       sensor 2 - 90.0°
+#       sensor 3 - 180.0°
+#
+#              ************************
+#              ****  COLUMN NAMES  ****
+#              ************************
+#
+# UV_0   AL_0   Mx_0   My_0   Mz_0   time_0       UV_1   AL_1   Mx_1   My_1   Mz_1   time_1       UV_2   AL_2   Mx_2   My_2   Mz_2   time_2       UV_3   AL_3   Mx_3   My_3   Mz_3   time_3       lon_deg lon_min lon_sec lat_deg lat_min lat_sec alt time_GPS temperature altitude RSSI
+# counts counts #      #      #      hh:mm:ss.sss counts counts #      #      #      hh:mm:ss.sss counts counts #      #      #      hh:mm:ss.sss counts counts #      #      #      hh:mm:ss.sss °E      'E      ''E     °N      'N      ''N         hh:mm:ss °C          m        dBm
+#
+#
+UV_0,AL_0,Mx_0,My_0,Mz_0,time_0,UV_1,AL_1,Mx_1,My_1,Mz_1,time_1,UV_2,AL_2,Mx_2,My_2,Mz_2,time_2,UV_3,AL_3,Mx_3,My_3,Mz_3,time_3,lon_deg,lon_min,lon_sec,lat_deg,lat_min,lat_sec,alt,time_GPS,temperature,altitude,RSSI
+0,86,0.000000,-0.362205,0.929134,19:11:58.957,0,122,0.007874,-0.354331,0.929134,19:11:59.8,0,1405,0.023622,-0.330709,0.937008,19:11:59.58,52,122,0.007874,-0.322835,0.937008,19:11:59.109,16,2,11,69,17,44,16,19:11:59,2.5,-218116.4475145096,-82
+54,50,0.196850,-0.307087,0.929134,19:12:1.57,66,104,0.212598,-0.346457,0.905512,19:12:1.107,223,1446,0.204724,-0.338583,0.913386,19:12:1.158,59,122,0.181102,-0.322835,0.921260,19:12:1.209,16,2,11,69,17,44,16,19:12:1,3.0,-218103.76579307506,-81
+54,68,0.165354,-0.283465,0.937008,19:12:3.157,72,68,0.157480,-0.259843,0.944882,19:12:3.207,194,1038,0.149606,-0.267717,0.944882,19:12:3.258,162,671,0.133858,-0.251969,0.952756,19:12:3.309,16,2,11,69,17,44,16,19:12:3,2.5,-218103.76579307506,-79
+45,68,0.307087,-0.314961,0.889764,19:12:5.257,70,68,0.299213,-0.314961,0.889764,19:12:5.307,232,939,0.307087,-0.314961,0.889764,19:12:5.358,230,845,0.291339,-0.330709,0.889764,19:12:5.409,16,2,11,69,17,44,17,19:12:5,2.5,-218103.76579307506,-77
+43,86,0.204724,-0.338583,0.913386,19:12:7.357,70,68,0.196850,-0.354331,0.905512,19:12:7.407,293,727,0.181102,-0.409449,0.889764,19:12:7.458,196,845,0.196850,-0.417323,0.881890,19:12:7.509,16,2,11,69,17,44,18,19:12:7,2.5,-218103.76579307506,-81
+37,68,0.314961,-0.338583,0.881890,19:12:9.457,70,68,0.307087,-0.322835,0.889764,19:12:9.507,46,199,0.307087,-0.307087,0.889764,19:12:9.558,264,1142,0.283465,-0.314961,0.897638,19:12:9.609,16,2,10,69,17,44,19,19:12:9,2.5,-218103.76579307506,-79
+42,86,0.275591,-0.259843,0.921260,19:12:11.557,70,68,0.228346,-0.307087,0.913386,19:12:11.607,309,699,0.196850,-0.346457,0.913386,19:12:11.658,267,1005,0.228346,-0.354331,0.897638,19:12:11.709,16,2,10,69,17,44,19,19:12:11,2.5,-218103.76579307506,-83
+42,68,0.409449,-0.338583,0.842520,19:12:16.757,72,68,0.409449,-0.362205,0.826772,19:12:16.807,43,199,0.385827,-0.362205,0.842520,19:12:16.858,282,1214,0.362205,-0.330709,0.866142,19:12:16.909,16,2,10,69,17,44,20,19:12:16,2.5,-218090.37754478978,-86
+37,86,0.251969,-0.157480,0.952756,19:12:17.857,74,50,0.267717,-0.181102,0.944882,19:12:17.907,43,141,0.275591,-0.212598,0.929134,19:12:17.958,255,1107,0.307087,-0.251969,0.913386,19:12:18.9,16,2,10,69,17,44,21,19:12:18,3.0,-218090.37754478978,-78
+43,68,0.370079,-0.417323,0.826772,19:12:19.957,64,68,0.338583,-0.464567,0.811024,19:12:20.7,279,785,0.362205,-0.433071,0.818898,19:12:20.58,224,939,0.362205,-0.448819,0.811024,19:12:20.109,16,2,10,69,17,44,22,19:12:20,2.5,-218090.37754478978,-83
+43,86,0.259843,-0.165354,0.944882,19:12:22.57,72,50,0.275591,-0.149606,0.944882,19:12:22.107,45,180,0.283465,-0.149606,0.944882,19:12:22.158,274,1214,0.322835,-0.157480,0.929134,19:12:22.209,16,2,10,69,17,44,22,19:12:22,2.5,-218077.6920583282,-83
+38,86,0.275591,-0.283465,0.913386,19:12:24.157,66,50,0.299213,-0.228346,0.921260,19:12:24.207,38,141,0.314961,-0.259843,0.905512,19:12:24.258,261,972,0.322835,-0.251969,0.905512,19:12:24.309,16,2,10,69,17,44,22,19:12:24,2.5,-218077.6920583282,-86
+42,68,0.244094,-0.299213,0.913386,19:12:26.257,66,50,0.251969,-0.338583,0.897638,19:12:26.307,80,616,0.267717,-0.354331,0.889764,19:12:26.358,244,972,0.291339,-0.377953,0.874016,19:12:26.409,16,2,10,69,17,44,23,19:12:26,2.5,-218077.6920583282,-77
+50,50,0.322835,-0.291339,0.897638,19:12:28.357,62,50,0.330709,-0.259843,0.897638,19:12:28.407,224,1005,0.330709,-0.244094,0.905512,19:12:28.458,217,939,0.322835,-0.267717,0.897638,19:12:28.509,16,2,10,69,17,44,24,19:12:28,2.5,-218077.6920583282,-80
+50,50,0.385827,-0.417323,0.818898,19:12:30.457,58,68,0.393701,-0.433071,0.803150,19:12:30.507,207,1072,0.401575,-0.433071,0.803150,19:12:30.558,214,785,0.401575,-0.417323,0.811024,19:12:30.609,16,2,10,69,17,44,24,19:12:30,2.5,-218077.6920583282,-82
+50,33,0.259843,-0.259843,0.921260,19:12:32.557,46,86,0.267717,-0.251969,0.921260,19:12:32.607,267,1613,0.244094,-0.236220,0.937008,19:12:32.658,68,141,0.181102,-0.236220,0.944882,19:12:32.709,16,2,10,69,17,44,23,19:12:32,2.5,-218077.6920583282,-79
+45,68,0.244094,-0.307087,0.913386,19:12:35.121,48,122,0.196850,-0.314961,0.921260,19:12:35.171,248,1657,0.212598,-0.307087,0.921260,19:12:35.222,79,160,0.220472,-0.299213,0.921260,19:12:35.273,16,2,10,69,17,44,22,19:12:35,2.5,-218090.37754478978,-85
+46,68,0.125984,-0.362205,0.913386,19:12:37.221,48,104,0.149606,-0.346457,0.921260,19:12:37.271,272,1487,0.157480,-0.338583,0.921260,19:12:37.322,58,122,0.181102,-0.314961,0.929134,19:12:37.373,16,2,10,69,17,44,22,19:12:37,3.0,-218077.6920583282,-79
+27,68,0.322835,-0.251969,0.905512,19:12:39.321,56,86,0.299213,-0.267717,0.905512,19:12:39.371,245,1005,0.283465,-0.267717,0.913386,19:12:39.422,168,756,0.267717,-0.275591,0.913386,19:12:39.473,16,2,10,69,17,44,23,19:12:39,3.0,-218090.37754478978,-80
+45,86,0.338583,-0.370079,0.858268,19:12:41.421,64,104,0.307087,-0.385827,0.858268,19:12:41.471,261,1570,0.291339,-0.377953,0.874016,19:12:41.522,56,104,0.275591,-0.370079,0.881890,19:12:41.573,16,2,9,69,17,44,23,19:12:41,3.0,-218090.37754478978,-82
+56,50,0.283465,-0.314961,0.897638,19:12:43.521,61,68,0.307087,-0.267717,0.905512,19:12:43.571,277,1366,0.322835,-0.244094,0.905512,19:12:43.622,71,122,0.322835,-0.236220,0.913386,19:12:43.673,16,2,9,69,17,44,23,19:12:43,3.0,-218090.37754478978,-83
