@@ -265,7 +265,7 @@ void setup()
     }
     Serial.println("End of setup");
     Serial.println();
-    playTune();
+    beep(1);
 };
 
 void loop()
