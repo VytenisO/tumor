@@ -1,0 +1,122 @@
+#
+#              ************************************
+#              *****    GLOBAL ATTRIBUTES    ******
+#              ************************************
+#
+#     TITLE                           TUMOR> Ultraviolet Balloon Probe Readings
+#     PROJECT                         TUMOR>Targeting Ultraviolet Mid-Ozone layer Radiation
+#                                     TEK5720>Space Systems Project>Blip-Blop
+#     DISCIPLINE                      Geoscience>Atmospheric Modelling
+#     DATA_TYPE                       2.1 second samples
+#     DATA_VERSION                    2
+#     GENERATED_BY                    Universitetet i Oslo
+#     GENERATION_DATE                 20240424
+#     LINK_TEXT                       Repository with the code and data
+#     LINK_TITLE                      TUMOR project repository
+#     HTTP_LINK                       https://github.com/VytenisO/tumor
+#     TEXT                            Data obtain from a balloon probe sent as a part of
+#                                     TEK5720 course at the University of Oslo
+#                                     Balloon was released from Andøya Space Center
+#                                     The probe consists of several auxilary sensors like
+#                                     GPS, IMU, thermometer and barometer, and four main sensors
+#                                     measuring ultraviolet and ambient light detected counts
+#                                     distributed evenly in the probe's horizontal plane
+#                                     reference:
+#                                     https://optoelectronics.liteon.com/upload/download/DS86-2015-0004/LTR-390UV_Final_%20DS_V1%201.pdf
+#     MODS                            Initial Release 17/04/24.
+#     LOGICAL_FILE_ID                 TUMOR_20240424_V1
+#     LOGICAL_SOURCE                  TUMOR
+#     LOGICAL_SOURCE_DESCRIPTION      TUMOR 2.1 second UV samples
+#     PI_NAME                         M. J. Odorczuk
+#     PI_AFFILIATION                  Universitetet i Oslo
+#     MISSION_GROUP                   Blip-Blop
+#     INSTRUMENT_TYPE                 Ultraviolet sensor
+#     TIME_RESOLUTION                 inconsistent, nominally 2.1 second
+#     ACKNOWLEDGEMENT                 Please acknowledge the course supervisor
+#                                     Anja Kohfeldt from the University of Oslo
+#                                     and the course advisor
+#                                     Elise Wright Knutsen from the University of Oslo
+#     RULES_OF_USE                    Free to use, source acknowledge required
+#
+#              ************************************
+#              ****  RECORD VARYING VARIABLES  ****
+#              ************************************
+#
+#  1. Ultraviolet frames 0, 1, 2 and 3
+#       1a. Ultraviolet counts on the sensor
+#           NOTES:  Reference: https://optoelectronics.liteon.com/upload/download/DS86-2015-0004/LTR-390UV_Final_%20DS_V1%201.pdf
+#                   Gain set to 18, resolution set to 16 bit, integration time is 25 ms
+#                   Values may range from 0 to 65535, expected no larger than 3000
+#       1b. Ambient light counts on the sensor
+#           NOTES:  Reference: https://optoelectronics.liteon.com/upload/download/DS86-2015-0004/LTR-390UV_Final_%20DS_V1%201.pdf
+#                   Gain set to 1, resolution set to 16 bit, integration time is 25 ms
+#                   Values may range from 0 to 65535
+#                   Counts are compressed with a formula log10(al_counts + 1000) * 139 - 417 and sent as an unsigned 8 bit integer
+#                   Counts are decompressed by the ground station
+#                   Decompression formula is 10^((received_counts + 417) / 139) - 1000
+#                   Decompressed values are stored as unisgned 16 bit integers
+#       1c. Magnetic field on the probe in x-direction, normalized to total magnitude equal to 1
+#       1d. Magnetic field on the probe in y-direction, normalized to total magnitude equal to 1
+#       1e. Magnetic field on the probe in z-direction, normalized to total magnitude equal to 1
+#           NOTES:  Magnetic field is an average of 10 samples measured right before 1a and another 10 samples after 1b
+#                   Values are interpolated as an average of all the samples
+#       1f. Timestamp at the beginning of the frame
+#           NOTES:  First 10 magnetometer samples are obtained up to 10ms from the timestamp
+#                   Ultraviolet counts are sampled in the window between 1 to 26ms from the timestamp
+#                   Ambient light counts are sampled in the window between 27 and 52ms from the timestamp
+#                   Last 10 magnetometer samples are obtained 62ms from the timestamp
+#                   Timestamp given in the format hh:mm:ss.sss
+#       NOTES: All the points 1a-1f are repeated four times for each sensor
+#  2. GPS frame
+#       2a. Longitude of the probe in degree east
+#       2b. Longitude of the probe in arcminutes east from the last full degree
+#       2c. Longitude of the probe in arcseconds east from the last full arcminute
+#       2d. Latitude of the probe in degree east
+#       2e. Latitude of the probe in arcminutes east from the last full degree
+#       2f. Latitude of the probe in arcseconds east from the last full arcminute
+#       2g. Altitude in meters above sea level
+#       2h. Timestamp of the GPS data frame
+#       NOTES:  Received GPS data is sent in clipped compressed values thus overflow errors can occur
+#               Overflow spherical coordinates error occurs for every 18°12'18''
+#               Overflow altitudinal error occurs for every 65 536 m
+#               Overflow temporal error occurs for every 18 hours, 12 minutes and 18 seconds
+#               Expected launch coordinates are 69°19' N, 16°7' E
+#               Expected launch time is 24-04-2024 between 12:45:00 - 15:00:00 UTC
+#               Expected altitude is from 0 to 30 000 m above sea level
+#  9. Pressure
+#       NOTES:  In pascals
+#               Pressure is sampled as a float value in Pa
+#               Pressure is compressed with a formula log(p + 1) * 5500 and sent as a 16 bit unsignet integer
+#               For pressure p = 0 Pa, sent value is 5500
+#               For pressure p = 1200 hPa, sent value is 64323
+#               Overflow can occur for pressure p > 149 559 Pa
+#               Pressure is decompressed with a formula e^(logp / 5500.0) - 1
+#               Expected pressure is from 30 to 102 kPa above sea level
+# 11. External temperature
+#       NOTES:  Given in degrees Celsius
+#               Overflow error occurs for every 128 degrees
+#               Values ranging from -84 to +43.5
+#               Expected temperature is from -70 to +30
+#               Resolution of 0.5 degree
+# 12. RSSI - Received Signal Strength Indicator
+#
+#              ******************************
+#              ****  SENSOR ORIENTATION  ****
+#              ******************************
+#
+# Before the release, sensor 1 was oriented towards the magnetic north. All the UV sensors are evenly distributed clockwise in the horizontal plane.
+# Azimuths are as follows:
+#       sensor 0 - 270.0°
+#       sensor 1 - 0.0°
+#       sensor 2 - 90.0°
+#       sensor 3 - 180.0°
+#
+#              ************************
+#              ****  COLUMN NAMES  ****
+#              ************************
+#
+# UV_0   AL_0   Mx_0   My_0   Mz_0   time_0       UV_1   AL_1   Mx_1   My_1   Mz_1   time_1       UV_2   AL_2   Mx_2   My_2   Mz_2   time_2       UV_3   AL_3   Mx_3   My_3   Mz_3   time_3       lon_deg lon_min lon_sec lat_deg lat_min lat_sec alt time_GPS temperature pressure RSSI
+# counts counts #      #      #      hh:mm:ss.sss counts counts #      #      #      hh:mm:ss.sss counts counts #      #      #      hh:mm:ss.sss counts counts #      #      #      hh:mm:ss.sss °E      'E      ''E     °N      'N      ''N         hh:mm:ss °C          Pa       dBm
+#
+#
+UV_0,AL_0,Mx_0,My_0,Mz_0,time_0,UV_1,AL_1,Mx_1,My_1,Mz_1,time_1,UV_2,AL_2,Mx_2,My_2,Mz_2,time_2,UV_3,AL_3,Mx_3,My_3,Mz_3,time_3,lon_deg,lon_min,lon_sec,lat_deg,lat_min,lat_sec,alt,time_GPS,temperature,pressure,RSSI
