@@ -10,7 +10,7 @@ def load_data():
         "flightVersion/flight_records/GS_Andenes/Flight_data_GS_Andenes_complete.csv"
     )
     df2 = pd.read_csv(
-        "flightVersion/flight_records/GS_Andenes/TUMOR_Altitude_corrected.csv"
+        "flightVersion/flight_records/GS_Andenes/TUMOR_Altiude_corrected_cleaned.csv"
     )
     merged = pd.merge(df, df2, on="time_GPS", how="inner")
     return merged
@@ -24,11 +24,17 @@ else:
 # starte motta på altitude 20 meter og sluttet på 900, mottok hele veien opp til 22650 meter
 # 11:24 - 13:27 flighttime, 124 minutter
 # for pakketap trengs antall totale pakker forventet, finner dette ved vite hvor lenge vi opererte og dele på 2.1 sekunder.
-
-received_packages = len(df)
-expected_packages = 60 * 124 / 2.1
+df2 = pd.read_csv(
+    "flightVersion/flight_records/GS_Andenes/Flight_data_GS_Andenes_complete.csv"
+)
+received_packages = len(df2)
+blunderFactor = -4 * 60
+expected_packages = (blunderFactor + 60 * 124) / 2.1
 rate = received_packages / expected_packages
 packets_lost = 1 - rate
+print(
+    f"Received packages: {received_packages}, expected packages: {expected_packages}, rate: {rate}, packets lost: {packets_lost}"
+)
 
 # plot hvor pakkene forsvinnner ifht. altitude, kan se om det er en sammenheng mellom høyde og pakketap
 # plot hvor mange pakker som forsvinner ifht. tid, kan se om det er en sammenheng mellom tid og pakketap, fjern outliers
@@ -58,8 +64,46 @@ def packet_loss(df):
     rolling_mean_lost_packets = (
         df_missing_packets["missing_packets"].rolling(window=5, min_periods=0).mean()
     )
-    print(df_missing_packets)
+    # print(df_missing_packets)
     plt.figure(figsize=(10, 6))
+    plt.scatter(
+        df_missing_packets["time_gps_diff"],
+        df_missing_packets["Altitude_Corrected (m)"],
+        marker="o",
+        s=df_missing_packets["missing_packets"] * 1.2,
+        color="blue",
+        label="Missing Packets",
+    )
+    plt.plot(
+        rolling_mean_lost_packets,
+        df_missing_packets["Altitude_Corrected (m)"],
+        color="red",
+        label="Rolling mean, missing packets",
+    )
+    plt.xlabel("radio silence (seconds), packet lost every 2 seconds")
+    plt.ylabel("Altitude (meters)")
+    plt.title("Altitude vs radio silence")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+    plt.clf()
+
+    first_blunder = df_missing_packets["time_gps_diff"].nlargest(2).iloc[0]
+    second_blunder = df_missing_packets["time_gps_diff"].nlargest(2).iloc[1]
+    # print(f"huge gap, {biggest_gap}")
+
+    selected_row = df_missing_packets[
+        df_missing_packets["time_gps_diff"] == first_blunder
+    ]
+    df_missing_packets = df_missing_packets.drop(selected_row.index)
+    selected_row = df_missing_packets[
+        df_missing_packets["time_gps_diff"] == second_blunder
+    ]
+    df_missing_packets = df_missing_packets.drop(selected_row.index)
+
+    rolling_mean_lost_packets = (
+        df_missing_packets["missing_packets"].rolling(window=5, min_periods=0).mean()
+    )
     plt.scatter(
         df_missing_packets["time_gps_diff"],
         df_missing_packets["Altitude_Corrected (m)"],
