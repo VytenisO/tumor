@@ -9,11 +9,18 @@ def load_data():
     df = pd.read_csv(
         "flightVersion/flight_records/GS_Andenes/Flight_data_GS_Andenes_complete.csv"
     )
-    return df
+    df2 = pd.read_csv(
+        "flightVersion/flight_records/GS_Andenes/TUMOR_Altitude_corrected.csv"
+    )
+    merged = pd.merge(df, df2, on="time_GPS", how="inner")
+    return merged
 
 
 df = load_data()
-
+if "Altitude_Corrected (m)" in df.columns:
+    print("'Altitude_Corrected (m)' is in df")
+else:
+    print("'Altitude_Corrected (m)' is not in df")
 # starte motta på altitude 20 meter og sluttet på 900, mottok hele veien opp til 22650 meter
 # 11:24 - 13:27 flighttime, 124 minutter
 # for pakketap trengs antall totale pakker forventet, finner dette ved vite hvor lenge vi opererte og dele på 2.1 sekunder.
@@ -42,8 +49,8 @@ def packet_loss(df):
     df = df[df["time_gps_diff"] > 0]  # row should be after the previous
     lost_packet_mask = df["time_gps_diff"] > 3.5  # packages are sent every 2.1 seconds
     # Set 'altitude' for lost packet rows to be the average of the prior and curent
-    df.loc[lost_packet_mask, "Altitude_est"] = (
-        df["Altitude_est"].shift(-1) + df["Altitude_est"]
+    df.loc[lost_packet_mask, "Altitude_Corrected (m)"] = (
+        df["Altitude_Corrected (m)"].shift(-1) + df["Altitude_Corrected (m)"]
     ) / 2
 
     df_missing_packets = df.loc[lost_packet_mask].copy()
@@ -55,7 +62,7 @@ def packet_loss(df):
     plt.figure(figsize=(10, 6))
     plt.scatter(
         df_missing_packets["time_gps_diff"],
-        df_missing_packets["Altitude_est"],
+        df_missing_packets["Altitude_Corrected (m)"],
         marker="o",
         s=df_missing_packets["missing_packets"] * 1.2,
         color="blue",
@@ -63,7 +70,7 @@ def packet_loss(df):
     )
     plt.plot(
         rolling_mean_lost_packets,
-        df_missing_packets["Altitude_est"],
+        df_missing_packets["Altitude_Corrected (m)"],
         color="red",
         label="Rolling mean, missing packets",
     )
@@ -157,17 +164,17 @@ sunFacingAverage = uv_running_median(sunFacers, window=5, step=None)
 plt.plot(
     sunFacingAverage["UV_avg"][::300],
     cleanedDf["Altitude_est"][::300],
-    label="sun facing average",
+    label="sun facing median",
     color="blue",
 )
 plt.scatter(
     sunFacingAverage["UV_avg"],
     cleanedDf["Altitude_est"],
-    label="sun facing average",
+    label="sun facing median",
     s=1,
     color="red",
 )
-plt.xlabel("Sun facing average")
+plt.xlabel("Sun facing median")
 plt.ylabel("Altitude")
 plt.legend()
 plt.show()
