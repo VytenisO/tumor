@@ -28,6 +28,7 @@ df2 = pd.read_csv(
     "flightVersion/flight_records/GS_Andenes/Flight_data_GS_Andenes_complete.csv"
 )
 received_packages = len(df2)
+print(f"Received packages: {received_packages}")
 blunderFactor = -4 * 60
 expected_packages = (blunderFactor + 60 * 124) / 2.1
 rate = received_packages / expected_packages
@@ -72,7 +73,7 @@ def packet_loss(df):
         marker="o",
         s=df_missing_packets["missing_packets"] * 1.2,
         color="blue",
-        label="Missing Packets",
+        label="Radio Silence (seconds)",
     )
     plt.plot(
         rolling_mean_lost_packets,
@@ -110,7 +111,7 @@ def packet_loss(df):
         marker="o",
         s=df_missing_packets["missing_packets"] * 1.2,
         color="blue",
-        label="Missing Packets",
+        label="Radio Silence (seconds)",
     )
     plt.plot(
         rolling_mean_lost_packets,
